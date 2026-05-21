@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 export default function HomeScreen() {
   const matches = [
     {
@@ -25,7 +26,7 @@ export default function HomeScreen() {
       status: 'Thiếu 2 người',
     },
   ];
-
+  const navigation = useNavigation();
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -63,7 +64,10 @@ export default function HomeScreen() {
             <Text style={styles.actionText}>Tìm đối</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('Cầu thủ')}
+          >
             <Ionicons name="person-add" size={45} color="#3b82f6" />
             <Text style={styles.actionText}>Tìm người</Text>
           </TouchableOpacity>
