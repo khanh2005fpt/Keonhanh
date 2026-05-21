@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 
-export default function RegisterScreen({ apiBaseUrl, onRegistered }) {
+export default function RegisterScreen({ apiBaseUrl, onRegistered, navigation }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -56,6 +56,9 @@ export default function RegisterScreen({ apiBaseUrl, onRegistered }) {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={styles.screen}
     >
+      <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <Text style={styles.backText}>← Quay lại</Text>
+      </Pressable>
       <View style={styles.header}>
         <Text style={styles.logo}>KeoNhanh</Text>
         <Text style={styles.title}>Đăng ký tài khoản</Text>
@@ -109,6 +112,15 @@ export default function RegisterScreen({ apiBaseUrl, onRegistered }) {
 }
 
 const styles = StyleSheet.create({
+  backBtn: {
+    marginBottom: 12,
+  },
+
+  backText: {
+    color: "#22c55e",
+    fontSize: 15,
+    fontWeight: "700",
+  },
   screen: {
     flex: 1,
     backgroundColor: "#f6f8f4",

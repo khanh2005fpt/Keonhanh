@@ -15,6 +15,7 @@ export default function HomeScreen({ navigation }) {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // Tạm để false, sau có thể check từ AsyncStorage
 
   useEffect(() => {
     fetchMatches();
@@ -52,15 +53,33 @@ export default function HomeScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
+        
         <View style={styles.header}>
+          
           <View>
             <Text style={styles.hello}>Xin chào 👋</Text>
-            <Text style={styles.title}>Tìm kèo đá bóng</Text>
           </View>
-
-          <TouchableOpacity style={styles.avatar}>
-            <Ionicons name="person" size={24} color="white" />
-          </TouchableOpacity>
+        {isLoggedIn ? (
+            <TouchableOpacity style={styles.avatar}>
+              <Ionicons name="person" size={24} color="white" />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.authButtons}>
+              <TouchableOpacity 
+                style={styles.loginBtn}
+                onPress={() => navigation.navigate('login')}
+              >
+                <Text style={styles.loginBtnText}>Đăng nhập</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.registerBtn}
+                onPress={() => navigation.navigate('register')}
+              >
+                <Text style={styles.registerBtnText}>Đăng ký</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+  
         </View>
 
         {/* Banner */}
@@ -366,5 +385,40 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#999',
+  },
+
+  authButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  loginBtn: {
+    backgroundColor: '#22c55e',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  loginBtnText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+
+  registerBtn: {
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  registerBtnText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });

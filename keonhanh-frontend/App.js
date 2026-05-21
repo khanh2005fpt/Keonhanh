@@ -9,48 +9,42 @@ import PlayerListScreen from './home/PlayerListScreen';
 // import TeamScreen from './home/TeamScreen';
 // import MatchScreen from './home/MatchScreen';
 // import ProfileScreen from './home/ProfileScreen';
-
 const Tab = createBottomTabNavigator();
-import { StatusBar } from "expo-status-bar";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import RegisterScreen from "./auth/register";
-import ProfileSetupScreen from "./profile/profile";
-import { API_BASE_URL } from "./config/api";
-
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+const Stack = createNativeStackNavigator();
 export default function App() {
-  const [registeredUser, setRegisteredUser] = useState(null);
-  const [savedProfile, setSavedProfile] = useState(null);
 
-  if (!registeredUser) {
+  // Bỏ qua màn hình auth/profile ban đầu, luôn hiển thị HomeScreen trước
+  // if (!registeredUser) {
+  //   return (
+  //     <>
+  //       <RegisterScreen
+  //         apiBaseUrl={API_BASE_URL}
+  //         onRegistered={setRegisteredUser}
+  //       />
+  //       <StatusBar style="dark" />
+  //     </>
+  //   );
+  // }
+
+  // if (!savedProfile) {
+  //   return (
+  //     <>
+  //       <ProfileSetupScreen
+  //         apiBaseUrl={API_BASE_URL}
+  //         onCompleted={(profile) => {
+  //           setSavedProfile(profile);
+  //         }}
+  //         user={registeredUser}
+  //       />
+  //       <StatusBar style="dark" />
+  //     </>
+  //   );
+  // }
+  function MainTabs() {
     return (
-      <>
-        <RegisterScreen
-          apiBaseUrl={API_BASE_URL}
-          onRegistered={setRegisteredUser}
-        />
-        <StatusBar style="dark" />
-      </>
-    );
-  }
-
-  if (!savedProfile) {
-    return (
-      <>
-        <ProfileSetupScreen
-          apiBaseUrl={API_BASE_URL}
-          onCompleted={(profile) => {
-            setSavedProfile(profile); // 👈 quan trọng nhất
-          }}
-          user={registeredUser}
-        />
-        <StatusBar style="dark" />
-      </>
-    );
-  }
-
-  return (
-    <NavigationContainer>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
@@ -98,6 +92,7 @@ export default function App() {
           name="Cầu thủ"
           component={PlayerListScreen}
         />
+
         {/* 
         <Tab.Screen
           name="Đội bóng"
@@ -113,8 +108,22 @@ export default function App() {
           name="Cá nhân"
       //    component={ProfileScreen}
         /> */}
-      </Tab.Navigator>
 
+      </Tab.Navigator>
+    );
+  }
+  return (
+    <NavigationContainer>
+
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {/* app chính */}
+        <Stack.Screen name="main" component={MainTabs} />
+        {/* màn hình đăng ký */}
+        <Stack.Screen name="register" component={RegisterScreen} />
+
+
+
+      </Stack.Navigator>
 
     </NavigationContainer>
   );
