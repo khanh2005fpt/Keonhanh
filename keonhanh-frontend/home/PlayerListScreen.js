@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { API_BASE_URL } from '../config/api';
 
 export default function PlayerListScreen() {
   const [players, setPlayers] = useState([]);
@@ -22,10 +23,10 @@ export default function PlayerListScreen() {
   const fetchPlayers = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://192.168.100.160:9999/api/players');
+      const res = await fetch(`${API_BASE_URL}/api/players`);
       const json = await res.json();
       const filteredPlayers = json.players.filter(
-        (player) => player.isLookingForTeam === true
+        (player) => player.isLookingForTeam == true
       );
       setPlayers(filteredPlayers);
     } catch (error) {

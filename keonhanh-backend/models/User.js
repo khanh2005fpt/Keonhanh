@@ -1,21 +1,37 @@
+import crypto from "crypto";
 import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema({
-  username: {
-    type: String,
-    required: true,
-    unique: true,
+const userSchema = new mongoose.Schema(
+  {
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      minlength: 3,
+    },
+    passwordHash: {
+      type: String,
+      required: true,
+    },
   },
-
-  password: {
-    type: String,
-    required: true,
+  {
+    timestamps: true,
   },
+);
 
-  role: {
-    type: String,
-    default: "player",
-  },
-});
+userSchema.statics.hashPassword = function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(password, salt, 64).toString("hex");
 
-export default mongoose.model("Users", userSchema);
+  return `${salt}:${hash}`;
+};
+
+userSchema.methods.isValidPassword = function isValidPassword(password) {
+  const [salt, storedHash] = this.passwordHash.split(":");
+  const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+
+  return crypto.timingSafeEqual(Buffer.from(storedHash, "hex"), Buffer.from(hash, "hex"));
+};
+
+export default mongoose.model("User", userSchema, "Users");
