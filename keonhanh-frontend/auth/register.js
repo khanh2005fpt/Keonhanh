@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigation } from "@react-navigation/native";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -10,7 +11,10 @@ import {
   View,
 } from "react-native";
 
-export default function RegisterScreen({ apiBaseUrl, onRegistered, navigation }) {
+import { API_BASE_URL } from "../config/api";
+
+export default function RegisterScreen() {
+  const navigation = useNavigation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -25,7 +29,7 @@ export default function RegisterScreen({ apiBaseUrl, onRegistered, navigation })
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/auth/register`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -43,7 +47,10 @@ export default function RegisterScreen({ apiBaseUrl, onRegistered, navigation })
 
       setUsername("");
       setPassword("");
-      onRegistered(data.user);
+      navigation.replace("profile", {
+        userId: data.user.id,
+        username: data.user.username,
+      });
     } catch (registerError) {
       setError(registerError.message || "Khong the ket noi toi server");
     } finally {

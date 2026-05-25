@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,40 +9,13 @@ import PlayerListScreen from './home/PlayerListScreen';
 // import TeamScreen from './home/TeamScreen';
 // import MatchScreen from './home/MatchScreen';
 // import ProfileScreen from './home/ProfileScreen';
-const Tab = createBottomTabNavigator();
-import { Pressable, StyleSheet, Text, View } from "react-native";
 import RegisterScreen from "./auth/register";
+import ProfileSetupScreen from "./profile/profile";
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 export default function App() {
 
-  // Bỏ qua màn hình auth/profile ban đầu, luôn hiển thị HomeScreen trước
-  // if (!registeredUser) {
-  //   return (
-  //     <>
-  //       <RegisterScreen
-  //         apiBaseUrl={API_BASE_URL}
-  //         onRegistered={setRegisteredUser}
-  //       />
-  //       <StatusBar style="dark" />
-  //     </>
-  //   );
-  // }
-
-  // if (!savedProfile) {
-  //   return (
-  //     <>
-  //       <ProfileSetupScreen
-  //         apiBaseUrl={API_BASE_URL}
-  //         onCompleted={(profile) => {
-  //           setSavedProfile(profile);
-  //         }}
-  //         user={registeredUser}
-  //       />
-  //       <StatusBar style="dark" />
-  //     </>
-  //   );
-  // }
   function MainTabs() {
     return (
       <Tab.Navigator
@@ -120,6 +93,7 @@ export default function App() {
         <Stack.Screen name="main" component={MainTabs} />
         {/* màn hình đăng ký */}
         <Stack.Screen name="register" component={RegisterScreen} />
+        <Stack.Screen name="profile" component={ProfileSetupScreen} />
 
 
 
@@ -128,54 +102,3 @@ export default function App() {
     </NavigationContainer>
   );
 }
-
-
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#f6f8f4",
-    justifyContent: "center",
-    paddingHorizontal: 22,
-  },
-  doneBox: {
-    backgroundColor: "#ffffff",
-    borderColor: "#dfe7df",
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 20,
-  },
-  doneKicker: {
-    color: "#22c55e",
-    fontSize: 14,
-    fontWeight: "800",
-    marginBottom: 8,
-  },
-  doneTitle: {
-    color: "#17201a",
-    fontSize: 28,
-    fontWeight: "800",
-    marginBottom: 10,
-  },
-  doneText: {
-    color: "#5d6b63",
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  button: {
-    alignItems: "center",
-    backgroundColor: "#22c55e",
-    borderRadius: 8,
-    minHeight: 50,
-    justifyContent: "center",
-  },
-  buttonPressed: {
-    opacity: 0.86,
-  },
-  buttonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "800",
-  },
-});

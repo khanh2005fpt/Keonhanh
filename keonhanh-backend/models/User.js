@@ -10,9 +10,13 @@ const userSchema = new mongoose.Schema(
       trim: true,
       minlength: 3,
     },
-    passwordHash: {
+    password: {
       type: String,
       required: true,
+    },
+    role: {
+      type: String,
+      default: "player",
     },
   },
   {
@@ -28,7 +32,7 @@ userSchema.statics.hashPassword = function hashPassword(password) {
 };
 
 userSchema.methods.isValidPassword = function isValidPassword(password) {
-  const [salt, storedHash] = this.passwordHash.split(":");
+  const [salt, storedHash] = this.password.split(":");
   const hash = crypto.scryptSync(password, salt, 64).toString("hex");
 
   return crypto.timingSafeEqual(Buffer.from(storedHash, "hex"), Buffer.from(hash, "hex"));
