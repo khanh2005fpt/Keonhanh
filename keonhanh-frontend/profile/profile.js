@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import {
   ActivityIndicator,
   Image,
@@ -11,10 +12,14 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { API_BASE_URL } from "../config/api";
 
 const POSITIONS = ["Thủ môn", "Hậu vệ", "Tiền vệ", "Tiền đạo"];
 
-export default function ProfileSetupScreen({ apiBaseUrl, user, onCompleted }) {
+export default function ProfileSetupScreen() {
+  const navigation = useNavigation();
+  const route = useRoute();
+
   const [form, setForm] = useState({
     avatar: "",
     fullName: "",
@@ -26,6 +31,8 @@ export default function ProfileSetupScreen({ apiBaseUrl, user, onCompleted }) {
 
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const userId = route.params?.userId;
+  const username = route.params?.username;
 
   const updateField = (field, value) => {
     setForm((currentForm) => ({
@@ -43,13 +50,17 @@ export default function ProfileSetupScreen({ apiBaseUrl, user, onCompleted }) {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/user-profiles`, {
+      if (!userId) {
+        throw new Error("Khong tim thay thong tin user");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/user-profiles`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId: user.id,
+          userId,
           ...form,
         }),
       });
@@ -59,14 +70,20 @@ export default function ProfileSetupScreen({ apiBaseUrl, user, onCompleted }) {
         throw new Error(data.message || "Luu profile that bai");
       }
 
-      onCompleted(data.profile);
+      navigation.navigate("main");
     } catch (profileError) {
       setError(profileError.message || "Khong the ket noi toi server");
     } finally {
       setIsSubmitting(false);
     }
   };
-
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/users/${userId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        console.log(data);
+      });
+  }, []);
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -77,7 +94,7 @@ export default function ProfileSetupScreen({ apiBaseUrl, user, onCompleted }) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Text style={styles.kicker}>Xin chào, {user.username}</Text>
+          <Text style={styles.kicker}>Xin chào, {username}</Text>
           <Text style={styles.title}>Setup profile</Text>
         </View>
 
@@ -87,7 +104,7 @@ export default function ProfileSetupScreen({ apiBaseUrl, user, onCompleted }) {
               <Image source={{ uri: form.avatar }} style={styles.avatarImage} />
             ) : (
               <Text style={styles.avatarText}>
-                {(form.fullName || user.username).slice(0, 2).toUpperCase()}
+                {username.slice(0, 2).toUpperCase()}
               </Text>
             )}
           </View>
