@@ -57,7 +57,7 @@ export default function PlayerListScreen() {
             📍 {item.location}
           </Text>
           <Text style={styles.playerDetail}>
-            📞 {item.phoneNumber || 'Không có thông tin'}
+            📞 {item.phone || 'Không có thông tin'}
           </Text>
         </View>
       </View>

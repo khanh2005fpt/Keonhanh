@@ -23,7 +23,7 @@ export default function ProfileSetupScreen() {
   const [form, setForm] = useState({
     avatar: "",
     fullName: "",
-    phoneNumber: "",
+    phone: "",
     position: POSITIONS[0], 
     location: "",
     isLookingForTeam: true,
@@ -133,11 +133,11 @@ export default function ProfileSetupScreen() {
         <Text style={styles.label}>Số điện thoại</Text>
         <TextInput
           keyboardType="phone-pad"
-          onChangeText={(value) => updateField("phoneNumber", value)}
+          onChangeText={(value) => updateField("phone", value)}
           placeholder="09xx xxx xxx"
           placeholderTextColor="#8b98a5"
           style={styles.input}
-          value={form.phoneNumber}
+          value={form.phone}
         />
 
         <Text style={styles.label}>Vị trí trên sân</Text>

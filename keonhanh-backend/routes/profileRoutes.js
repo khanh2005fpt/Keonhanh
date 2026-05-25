@@ -34,14 +34,14 @@ router.post("/", async (req, res) => {
   try {
     const {
       userId,
-      phoneNumber,
+      phone,
       avatar = "",
       fullName,
       position,
       location,
     } = req.body;
 
-    if (!userId || !phoneNumber || !fullName || !position || !location) {
+    if (!userId || !phone || !fullName || !position || !location) {
       return res
         .status(400)
         .json({ message: "Vui long nhap day du thong tin profile" });
@@ -61,7 +61,7 @@ router.post("/", async (req, res) => {
       { userId },
       {
         userId,
-        phoneNumber: phoneNumber.trim(),
+        phone: phone.trim(),
         avatar: avatar.trim(),
         fullName: fullName.trim(),
         position: position.trim(),
