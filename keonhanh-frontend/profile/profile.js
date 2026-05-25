@@ -19,7 +19,7 @@ export default function ProfileSetupScreen({ apiBaseUrl, user, onCompleted }) {
     avatar: "",
     fullName: "",
     phoneNumber: "",
-    position: POSITIONS[0],
+    position: POSITIONS[0], 
     location: "",
     isLookingForTeam: true,
   });

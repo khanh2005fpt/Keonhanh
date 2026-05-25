@@ -91,11 +91,6 @@ export default function PlayerListScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Search & Filter */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#999" />
-          <Text style={styles.searchPlaceholder}>Tìm cầu thủ...</Text>
-        </View>
 
         {/* Player List */}
 

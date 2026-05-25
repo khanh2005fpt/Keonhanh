@@ -8,7 +8,7 @@ const userProfileSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    phoneNumber: {
+    phone: {
       type: String,
       required: true,
       trim: true,
