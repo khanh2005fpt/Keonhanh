@@ -42,7 +42,7 @@ export default function RegisterScreen() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Dang ky tai khoan that bai");
+        throw new Error(data.message || "Đăng ký tài khoản thất bại");
       }
 
       setUsername("");
@@ -52,7 +52,7 @@ export default function RegisterScreen() {
         username: data.user.username,
       });
     } catch (registerError) {
-      setError(registerError.message || "Khong the ket noi toi server");
+      setError(registerError.message || "Không thể kết nối với server");
     } finally {
       setIsSubmitting(false);
     }

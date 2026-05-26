@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { AuthContext } from '../auth/AuthContext';
 import {
   View,
   Text,
@@ -12,10 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_BASE_URL } from '../config/api';
 
 export default function HomeScreen({ navigation }) {
+  const { user, isLoggedIn } = useContext(AuthContext);
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Tạm để false, sau có thể check từ AsyncStorage
 
   useEffect(() => {
     fetchMatches();
@@ -57,10 +58,13 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.header}>
           
           <View>
-            <Text style={styles.hello}>Xin chào 👋</Text>
+            <Text style={styles.hello}>Xin chào {isLoggedIn ? user?.username : ""} 👋</Text>
           </View>
         {isLoggedIn ? (
-            <TouchableOpacity style={styles.avatar}>
+            <TouchableOpacity 
+              style={styles.avatar}
+              onPress={() => navigation.navigate('profile', { userId: user?.id, username: user?.username })}
+            >
               <Ionicons name="person" size={24} color="white" />
             </TouchableOpacity>
           ) : (

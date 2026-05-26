@@ -8,7 +8,7 @@ const userProfileSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    phoneNumber: {
+    phone: {
       type: String,
       required: true,
       trim: true,
@@ -43,4 +43,8 @@ const userProfileSchema = new mongoose.Schema(
   },
 );
 
-export default mongoose.model("UserProfile", userProfileSchema, "User_profiles");
+export default mongoose.model(
+  "UserProfile",
+  userProfileSchema,
+  "User_profiles",
+);
