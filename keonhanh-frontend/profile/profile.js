@@ -84,6 +84,7 @@ export default function ProfileSetupScreen() {
         console.log(data);
       });
   }, []);
+  
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
