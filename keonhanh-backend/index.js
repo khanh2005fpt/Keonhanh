@@ -1,22 +1,29 @@
-import express from "express"
-import mongoose from "mongoose"
-import bodyParser from "body-parser"
-import dotenv from "dotenv"
-import cors from "cors"
-const app = express();
-app.use(bodyParser.json());
-app.use(cors());
+const express = require("express");
+const dotenv = require("dotenv");
+const cors = require("cors");
+
+const connectDB = require("./config/db");
+
 dotenv.config();
+connectDB();
 
-const PORT = process.env.PORT;
-const MONGOURL = process.env.MONGO_URL;
+const app = express();
 
-mongoose.connect(MONGOURL).then(() => {
-    console.log("DB connected successfully");
-    app.listen(PORT, () => {
-        console.log(`Server is running on port: ${PORT}`);
-        
-    })
-     
-}).catch((error) => console.log(error))
-   
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Test API
+app.get("/", (req, res) => {
+  res.send("API Running...");
+});
+
+// Routes
+app.use("/api/users", require("./routes/userRoutes"));
+app.use("/api/teams", require("./routes/teamRoutes"));
+
+const PORT = process.env.PORT || 9999;
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});
