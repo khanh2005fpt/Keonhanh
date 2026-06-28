@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { AuthContext } from '../auth/AuthContext';
 import {
   View,
   Text,
@@ -12,10 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_BASE_URL } from '../config/api';
 
 export default function HomeScreen({ navigation }) {
+  const { user, isLoggedIn } = useContext(AuthContext);
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Tạm để false, sau có thể check từ AsyncStorage
 
   useEffect(() => {
     fetchMatches();
@@ -57,10 +58,13 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.header}>
           
           <View>
-            <Text style={styles.hello}>Xin chào 👋</Text>
+            <Text style={styles.hello}>Xin chào {isLoggedIn ? user?.username : ""} 👋</Text>
           </View>
         {isLoggedIn ? (
-            <TouchableOpacity style={styles.avatar}>
+            <TouchableOpacity 
+              style={styles.avatar}
+              onPress={() => navigation.navigate('profile', { userId: user?.id, username: user?.username })}
+            >
               <Ionicons name="person" size={24} color="white" />
             </TouchableOpacity>
           ) : (
@@ -90,7 +94,10 @@ export default function HomeScreen({ navigation }) {
             Tìm đội - tìm người - ghép kèo chỉ trong vài phút
           </Text>
 
-          <TouchableOpacity style={styles.bannerButton}>
+          <TouchableOpacity
+            style={styles.bannerButton}
+            onPress={() => navigation.navigate('createMatch')}
+          >
             <Text style={styles.bannerButtonText}>Tạo kèo ngay</Text>
           </TouchableOpacity>
         </View>
@@ -100,7 +107,7 @@ export default function HomeScreen({ navigation }) {
 
         <View style={styles.actions}>
           <TouchableOpacity style={styles.actionCard}>
-            <Ionicons name="people" size={45} color="#22c55e" />
+            <Ionicons name="people" size={40} color="#22c55e" />
             <Text style={styles.actionText}>Tìm đối</Text>
           </TouchableOpacity>
 
@@ -108,8 +115,24 @@ export default function HomeScreen({ navigation }) {
             style={styles.actionCard}
             onPress={() => navigation.navigate('Cầu thủ')}
           >
-            <Ionicons name="person-add" size={45} color="#3b82f6" />
+            <Ionicons name="person-add" size={40} color="#3b82f6" />
             <Text style={styles.actionText}>Tìm người</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('createTeam')}
+          >
+            <Ionicons name="shield" size={40} color="#f59e0b" />
+            <Text style={styles.actionText}>Tạo đội</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('createMatch')}
+          >
+            <Ionicons name="football" size={40} color="#ef4444" />
+            <Text style={styles.actionText}>Tạo kèo</Text>
           </TouchableOpacity>
 
         </View>
@@ -254,12 +277,14 @@ const styles = StyleSheet.create({
 
   actions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: 28,
+    gap: 12,
   },
 
   actionCard: {
-    width: '45%',
+    width: '47%',
     backgroundColor: 'white',
     borderRadius: 18,
     paddingVertical: 22,

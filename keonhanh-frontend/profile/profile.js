@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { AuthContext } from "../auth/AuthContext";
 import {
   ActivityIndicator,
   Image,
@@ -19,6 +20,7 @@ const POSITIONS = ["Thủ môn", "Hậu vệ", "Tiền vệ", "Tiền đạo"];
 export default function ProfileSetupScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const { logout } = useContext(AuthContext);
 
   const [form, setForm] = useState({
     avatar: "",
@@ -35,6 +37,7 @@ export default function ProfileSetupScreen() {
   const username = route.params?.username;
 
   const updateField = (field, value) => {
+    setError(""); // Xóa thông báo lỗi khi người dùng bắt đầu nhập lại
     setForm((currentForm) => ({
       ...currentForm,
       [field]: value,
@@ -47,11 +50,59 @@ export default function ProfileSetupScreen() {
     }
 
     setError("");
+
+    // 1. Chuẩn hóa dữ liệu (trim khoảng trắng)
+    const fullName = form.fullName.trim();
+    const phone = form.phone.trim();
+    const location = form.location.trim();
+
+    // 2. Định nghĩa các Regex kiểm tra
+    // Hỗ trợ tiếng Việt, yêu cầu ít nhất 2 từ (họ và tên tách nhau bằng khoảng trắng)
+    const nameRegex =
+      /^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠưăâêôơ]+(\s+[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠưăâêôơ]+)+$/;
+    const phoneRegex = /^(0|84|\+84)(3|5|7|8|9)([0-9]{8})$/;
+
+    // 3. Tiến hành validation
+    if (!fullName) {
+      setError("Vui lòng nhập họ và tên.");
+      return;
+    }
+    if (fullName.length < 4 || fullName.length > 50) {
+      setError("Họ tên phải từ 4 đến 50 ký tự.");
+      return;
+    }
+    if (!nameRegex.test(fullName)) {
+      setError(
+        "Vui lòng nhập đầy đủ cả họ và tên (tối thiểu 2 từ, ví dụ: Nguyễn Văn A).",
+      );
+      return;
+    }
+
+    if (!phone) {
+      setError("Vui lòng nhập số điện thoại.");
+      return;
+    }
+    if (!phoneRegex.test(phone)) {
+      setError("Số điện thoại không đúng định dạng (Ví dụ: 0912345678).");
+      return;
+    }
+
+    if (!location) {
+      setError("Vui lòng nhập địa chỉ / khu vực.");
+      return;
+    }
+    if (location.length < 5) {
+      setError(
+        "Địa chỉ quá ngắn. Vui lòng nhập chi tiết hơn (tối thiểu 5 ký tự).",
+      );
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       if (!userId) {
-        throw new Error("Khong tim thay thong tin user");
+        throw new Error("Không tìm thấy thông tin user");
       }
 
       const response = await fetch(`${API_BASE_URL}/api/user-profiles`, {
@@ -62,29 +113,56 @@ export default function ProfileSetupScreen() {
         body: JSON.stringify({
           userId,
           ...form,
+          fullName, // Gửi các giá trị đã được trim chuẩn hóa
+          phone,
+          location,
         }),
       });
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Luu profile that bai");
+        throw new Error(data.message || "Lưu profile thất bại");
       }
 
       navigation.navigate("main");
     } catch (profileError) {
-      setError(profileError.message || "Khong the ket noi toi server");
+      setError(profileError.message || "Không thể kết nối tới server");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const handleLogout = async () => {
+    await logout();
+    navigation.navigate("main");
+  };
+
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/users/${userId}`)
-      .then((res) => res.json())
+    if (!userId) return;
+
+    fetch(`${API_BASE_URL}/api/user-profiles/${userId}`)
+      .then((res) => {
+        if (res.ok) return res.json();
+        return null;
+      })
       .then((data) => {
-        console.log(data);
+        if (data && data.profile) {
+          const p = data.profile;
+          setForm({
+            avatar: p.avatar || "",
+            fullName: p.fullName || "",
+            phone: p.phone || "",
+            position: p.position || POSITIONS[0],
+            location: p.location || "",
+            isLookingForTeam:
+              p.isLookingForTeam !== undefined ? p.isLookingForTeam : true,
+          });
+        }
+      })
+      .catch((err) => {
+        console.log("Failed to load profile:", err);
       });
-  }, []);
-  
+  }, [userId]);
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -193,6 +271,16 @@ export default function ProfileSetupScreen() {
           ) : (
             <Text style={styles.buttonText}>Lưu profile</Text>
           )}
+        </Pressable>
+
+        <Pressable
+          onPress={handleLogout}
+          style={({ pressed }) => [
+            styles.logoutButton,
+            pressed && styles.buttonPressed,
+          ]}
+        >
+          <Text style={styles.logoutButtonText}>Đăng xuất</Text>
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -321,6 +409,21 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  logoutButton: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderColor: "#ef4444",
+    borderWidth: 1,
+    borderRadius: 8,
+    minHeight: 52,
+    justifyContent: "center",
+    marginTop: 12,
+  },
+  logoutButtonText: {
+    color: "#ef4444",
     fontSize: 16,
     fontWeight: "800",
   },

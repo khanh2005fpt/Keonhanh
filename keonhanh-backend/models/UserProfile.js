@@ -43,4 +43,8 @@ const userProfileSchema = new mongoose.Schema(
   },
 );
 
-export default mongoose.model("UserProfile", userProfileSchema, "User_profiles");
+export default mongoose.model(
+  "UserProfile",
+  userProfileSchema,
+  "User_profiles",
+);

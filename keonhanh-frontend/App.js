@@ -6,12 +6,16 @@ import { Ionicons } from '@expo/vector-icons';
 
 import HomeScreen from './home/HomeScreen';
 import PlayerListScreen from './home/PlayerListScreen';
+import CreateMatchScreen from './home/CreateMatchScreen';
+import CreateTeamScreen from './home/CreateTeamScreen';
 // import TeamScreen from './home/TeamScreen';
 // import MatchScreen from './home/MatchScreen';
 // import ProfileScreen from './home/ProfileScreen';
 import RegisterScreen from "./auth/register";
+import LoginScreen from "./auth/login";
 import ProfileSetupScreen from "./profile/profile";
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { AuthProvider } from './auth/AuthContext';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 export default function App() {
@@ -86,19 +90,19 @@ export default function App() {
     );
   }
   return (
-    <NavigationContainer>
-
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {/* app chính */}
-        <Stack.Screen name="main" component={MainTabs} />
-        {/* màn hình đăng ký */}
-        <Stack.Screen name="register" component={RegisterScreen} />
-        <Stack.Screen name="profile" component={ProfileSetupScreen} />
-
-
-
-      </Stack.Navigator>
-
-    </NavigationContainer>
+    <AuthProvider>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {/* app chính */}
+          <Stack.Screen name="main" component={MainTabs} />
+          {/* màn hình đăng ký */}
+          <Stack.Screen name="register" component={RegisterScreen} />
+          <Stack.Screen name="login" component={LoginScreen} />
+          <Stack.Screen name="profile" component={ProfileSetupScreen} />
+          <Stack.Screen name="createMatch" component={CreateMatchScreen} />
+          <Stack.Screen name="createTeam" component={CreateTeamScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </AuthProvider>
   );
 }
