@@ -15,6 +15,14 @@ const createTeam = async (req, res) => {
             });
         }
 
+        // Chặn ảnh quá to (trên ~1.5MB base64) để tránh đơ Database và treo server
+        if (logo && logo.length > 2000000) {
+            return res.status(400).json({
+                success: false,
+                message: "Kích thước ảnh quá lớn, không thể lưu. Vui lòng chọn ảnh nhỏ hơn."
+            });
+        }
+
         // Validate captainId ObjectId
         if (!mongoose.Types.ObjectId.isValid(captainId)) {
             return res.status(400).json({
@@ -32,8 +40,19 @@ const createTeam = async (req, res) => {
             });
         }
 
+        // Tự động tìm Profile của Đội trưởng để đưa luôn vào danh sách players
+        const captainProfile = await UserProfile.findOne({ userId: captainId });
+        if (!captainProfile) {
+            return res.status(400).json({
+                success: false,
+                message: "Không tìm thấy hồ sơ cá nhân của Đội trưởng."
+            });
+        }
+
+        // Gộp danh sách players gửi lên (nếu có) VÀ ID profile của Đội trưởng
+        const allPlayerIds = [...new Set([...players, captainProfile._id.toString()])];
+
         // Kiểm tra các UserProfile tồn tại
-        const allPlayerIds = [...new Set(players)]; // loại trùng
         if (allPlayerIds.length > 0) {
             const existingProfiles = await UserProfile.find({
                 _id: { $in: allPlayerIds }
@@ -83,13 +102,17 @@ const createTeam = async (req, res) => {
             captainId,
             players: allPlayerIds,
             location: location.trim(),
-            skillLevel: skillLevel || "Beginner"
+            skillLevel: skillLevel || "Sơ cấp"
         });
+
+        // Tối ưu: Không gửi trả lại chuỗi base64 logo khổng lồ về điện thoại để tránh đơ app
+        const teamData = newTeam.toObject();
+        delete teamData.logo;
 
         return res.status(201).json({
             success: true,
             message: "Tạo đội bóng thành công.",
-            data: newTeam
+            data: teamData
         });
 
     } catch (err) {
@@ -134,6 +157,39 @@ const getTeamById = async (req, res) => {
 
         if (!team) {
             return res.status(404).json({ success: false, message: "Không tìm thấy đội bóng." });
+        }
+
+        return res.status(200).json({ success: true, data: team });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// GET /api/teams/my-team/:profileId — Lấy đội bóng của tôi theo profileId
+const getMyTeam = async (req, res) => {
+    try {
+        const { profileId } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(profileId)) {
+            return res.status(400).json({ success: false, message: "profileId không hợp lệ." });
+        }
+
+        // Bước 1: Lấy thông tin Profile để có được userId (dùng làm fallback cho các team cũ)
+        const profile = await UserProfile.findById(profileId);
+
+        console.log(`[getMyTeam] profileId nhận được từ App: ${profileId}`);
+        console.log(`[getMyTeam] userId tương ứng của profile: ${profile?.userId}`);
+
+        // Kiểm tra xem profileId của thằng đang đăng nhập CÓ CHỨA TRONG mảng players hay không
+        const team = await Team.findOne({
+            players: profileId
+        })
+            .populate("captainId", "username")
+            .populate("players", "fullName position avatar location phone");
+
+        console.log(`[getMyTeam] Đội bóng tìm được: ${team ? team.name : 'Không có'}`);
+
+        if (!team) {
+            return res.status(404).json({ success: false, message: "Bạn chưa gia nhập hoặc tạo đội bóng nào." });
         }
 
         return res.status(200).json({ success: true, data: team });
@@ -209,4 +265,4 @@ const deleteTeam = async (req, res) => {
     }
 };
 
-export { createTeam, getTeams, getTeamById, addPlayerToTeam, deleteTeam };
+export { createTeam, getTeams, getTeamById, getMyTeam, addPlayerToTeam, deleteTeam };

@@ -16,10 +16,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../auth/AuthContext';
 import { API_BASE_URL } from '../config/api';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { Image } from 'react-native';
 
-const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Advanced'];
-const SKILL_LABELS = { Beginner: 'Sơ cấp', Intermediate: 'Trung cấp', Advanced: 'Chuyên nghiệp' };
-const SKILL_COLORS = { Beginner: '#22c55e', Intermediate: '#f59e0b', Advanced: '#ef4444' };
+const SKILL_LEVELS = ['Sơ cấp', 'Trung cấp', 'Chuyên nghiệp'];
+const SKILL_LABELS = { 'Sơ cấp': 'Sơ cấp', 'Trung cấp': 'Trung cấp', 'Chuyên nghiệp': 'Chuyên nghiệp' };
+const SKILL_COLORS = { 'Sơ cấp': '#22c55e', 'Trung cấp': '#f59e0b', 'Chuyên nghiệp': '#ef4444' };
 
 export default function CreateTeamScreen({ navigation }) {
   const { user } = useContext(AuthContext);
@@ -28,7 +31,7 @@ export default function CreateTeamScreen({ navigation }) {
     name: '',
     logo: '',
     location: '',
-    skillLevel: 'Beginner',
+    skillLevel: 'Sơ cấp',
     isRecruiting: true,
   });
   const [errors, setErrors] = useState({});
@@ -37,6 +40,39 @@ export default function CreateTeamScreen({ navigation }) {
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
+  };
+
+  const pickLogo = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Cần quyền truy cập', 'Vui lòng cho phép truy cập thư viện ảnh trong cài đặt.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8, // Ảnh gốc có thể lấy chất lượng cao
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+
+      // ÉP KÍCH THƯỚC: Resize ảnh xuống chỉ còn 300x300 pixel và nén lại
+      // Việc này giúp chuỗi Base64 chỉ còn khoảng 10KB-20KB, DB không bao giờ bị đơ
+      const manipResult = await ImageManipulator.manipulateAsync(
+        asset.uri,
+        [{ resize: { width: 300, height: 300 } }],
+        { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+
+      const base64Uri = `data:image/jpeg;base64,${manipResult.base64}`;
+      setForm(prev => ({ ...prev, logo: base64Uri, logoUri: manipResult.uri }));
+    }
+  };
+
+  const removeLogo = () => {
+    setForm(prev => ({ ...prev, logo: '', logoUri: null }));
   };
 
   const validate = () => {
@@ -154,22 +190,40 @@ export default function CreateTeamScreen({ navigation }) {
               {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
             </View>
 
-            {/* Logo URL */}
+            {/* Logo */}
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>
-                <Ionicons name="image-outline" size={14} color="#22c55e" /> Logo (URL ảnh){' '}
+                <Ionicons name="image-outline" size={14} color="#22c55e" /> Logo đội bóng{' '}
                 <Text style={styles.optional}>tuỳ chọn</Text>
               </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="https://..."
-                placeholderTextColor="#aaa"
-                value={form.logo}
-                onChangeText={v => handleChange('logo', v)}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-              />
+
+              {form.logoUri ? (
+                <View style={styles.logoPreviewWrap}>
+                  <Image
+                    source={{ uri: form.logoUri }}
+                    style={styles.logoPreview}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.logoActions}>
+                    <TouchableOpacity style={styles.logoChangeBtn} onPress={pickLogo}>
+                      <Ionicons name="camera-outline" size={16} color="#22c55e" />
+                      <Text style={styles.logoChangeBtnText}>Thay ảnh</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.logoRemoveBtn} onPress={removeLogo}>
+                      <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                      <Text style={styles.logoRemoveBtnText}>Xóa</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity style={styles.logoPickerBtn} onPress={pickLogo} activeOpacity={0.8}>
+                  <View style={styles.logoPickerIcon}>
+                    <Ionicons name="camera" size={28} color="#22c55e" />
+                  </View>
+                  <Text style={styles.logoPickerText}>Chọn ảnh từ thư viện</Text>
+                  <Text style={styles.logoPickerSub}>Tỷ lệ 1:1 — JPEG / PNG</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Địa điểm */}
@@ -559,5 +613,80 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontSize: 16,
     fontWeight: '600',
+  },
+
+  // Logo picker
+  logoPickerBtn: {
+    backgroundColor: '#f0fdf4',
+    borderWidth: 2,
+    borderColor: '#86efac',
+    borderStyle: 'dashed',
+    borderRadius: 14,
+    paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  logoPickerIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#dcfce7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  logoPickerText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#16a34a',
+  },
+  logoPickerSub: {
+    fontSize: 12,
+    color: '#86efac',
+  },
+
+  logoPreviewWrap: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  logoPreview: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 3,
+    borderColor: '#22c55e',
+  },
+  logoActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  logoChangeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  logoChangeBtnText: {
+    color: '#16a34a',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  logoRemoveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fee2e2',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  logoRemoveBtnText: {
+    color: '#ef4444',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
