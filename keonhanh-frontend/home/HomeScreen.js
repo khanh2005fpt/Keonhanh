@@ -29,7 +29,7 @@ export default function HomeScreen({ navigation }) {
       const response = await fetch(`${API_BASE_URL}/api/players`);
       const data = await response.json();
 
-      console.log("API DATA:", data);
+      // console.log("API DATA:", data);
 
       const players = data.players || [];
 
@@ -100,7 +100,7 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         {/* Actions */}
-        <Text style={styles.sectionTitle}>Chức năng</Text>
+        <Text style={styles.sectionTitle}>Tính năng</Text>
 
         <View style={styles.actions}>
           <TouchableOpacity style={styles.actionCard}>
