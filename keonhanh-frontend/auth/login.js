@@ -25,8 +25,10 @@ export default function LoginScreen() {
 
     setError("");
     setIsSubmitting(true);
+
+    let res, data;
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -36,23 +38,25 @@ export default function LoginScreen() {
           password,
         }),
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || "Đăng nhập thất bại");
-        return;
-      }
-
-      // Lưu thông tin người dùng vào global state
-      await login(data.user);
-
-      // Đăng nhập thành công, điều hướng về màn hình chính
-      navigation.navigate("main");
-    } catch (loginError) {
-      setError("Không thể kết nối tới server");
-    } finally {
+      data = await res.json();
+    } catch (networkError) {
+      setError("Không thể kết nối tới server. Kiểm tra lại mạng!");
       setIsSubmitting(false);
+      return;
     }
+
+    if (!res.ok) {
+      setError(data.message || "Đăng nhập thất bại");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Lưu thông tin người dùng vào global state
+    await login(data.user);
+
+    // Đăng nhập thành công, điều hướng về màn hình chính
+    navigation.navigate("main");
+    setIsSubmitting(false);
   };
 
   return (

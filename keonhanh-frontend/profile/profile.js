@@ -26,7 +26,7 @@ export default function ProfileSetupScreen() {
     avatar: "",
     fullName: "",
     phone: "",
-    position: POSITIONS[0],
+    position: POSITIONS[0], 
     location: "",
     isLookingForTeam: true,
   });

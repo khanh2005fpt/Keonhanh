@@ -51,9 +51,11 @@ export default function PlayerListScreen() {
           <Text style={styles.playerName}>{item.fullName}</Text>
           <Text style={styles.playerDetail}>⚽ {item.position}</Text>
 
-          <Text style={styles.playerDetail}>📍 {item.location}</Text>
           <Text style={styles.playerDetail}>
-            📞 {item.phone || "Không có thông tin"}
+            📍 {item.location}
+          </Text>
+          <Text style={styles.playerDetail}>
+            📞 {item.phone || 'Không có thông tin'}
           </Text>
         </View>
       </View>

@@ -6,6 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import HomeScreen from './home/HomeScreen';
 import PlayerListScreen from './home/PlayerListScreen';
+import CreateMatchScreen from './home/CreateMatchScreen';
+import CreateTeamScreen from './home/CreateTeamScreen';
 // import TeamScreen from './home/TeamScreen';
 // import MatchScreen from './home/MatchScreen';
 // import ProfileScreen from './home/ProfileScreen';
@@ -97,6 +99,8 @@ export default function App() {
           <Stack.Screen name="register" component={RegisterScreen} />
           <Stack.Screen name="login" component={LoginScreen} />
           <Stack.Screen name="profile" component={ProfileSetupScreen} />
+          <Stack.Screen name="createMatch" component={CreateMatchScreen} />
+          <Stack.Screen name="createTeam" component={CreateTeamScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </AuthProvider>

@@ -94,7 +94,10 @@ export default function HomeScreen({ navigation }) {
             Tìm đội - tìm người - ghép kèo chỉ trong vài phút
           </Text>
 
-          <TouchableOpacity style={styles.bannerButton}>
+          <TouchableOpacity
+            style={styles.bannerButton}
+            onPress={() => navigation.navigate('createMatch')}
+          >
             <Text style={styles.bannerButtonText}>Tạo kèo ngay</Text>
           </TouchableOpacity>
         </View>
@@ -104,7 +107,7 @@ export default function HomeScreen({ navigation }) {
 
         <View style={styles.actions}>
           <TouchableOpacity style={styles.actionCard}>
-            <Ionicons name="people" size={45} color="#22c55e" />
+            <Ionicons name="people" size={40} color="#22c55e" />
             <Text style={styles.actionText}>Tìm đối</Text>
           </TouchableOpacity>
 
@@ -112,8 +115,24 @@ export default function HomeScreen({ navigation }) {
             style={styles.actionCard}
             onPress={() => navigation.navigate('Cầu thủ')}
           >
-            <Ionicons name="person-add" size={45} color="#3b82f6" />
+            <Ionicons name="person-add" size={40} color="#3b82f6" />
             <Text style={styles.actionText}>Tìm người</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('createTeam')}
+          >
+            <Ionicons name="shield" size={40} color="#f59e0b" />
+            <Text style={styles.actionText}>Tạo đội</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('createMatch')}
+          >
+            <Ionicons name="football" size={40} color="#ef4444" />
+            <Text style={styles.actionText}>Tạo kèo</Text>
           </TouchableOpacity>
 
         </View>
@@ -258,12 +277,14 @@ const styles = StyleSheet.create({
 
   actions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: 28,
+    gap: 12,
   },
 
   actionCard: {
-    width: '45%',
+    width: '47%',
     backgroundColor: 'white',
     borderRadius: 18,
     paddingVertical: 22,
