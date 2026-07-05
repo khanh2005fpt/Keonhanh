@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -56,9 +57,11 @@ export default function MyTeamScreen({ navigation }) {
     }
   };
 
-  useEffect(() => {
-    fetchMyTeam();
-  }, [user]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchMyTeam();
+    }, [user])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -136,7 +139,9 @@ export default function MyTeamScreen({ navigation }) {
                 </View>
                 <View style={styles.detailItem}>
                   <Ionicons name="star" size={16} color="#64748b" />
-                  <Text style={styles.detailText}>Đội trưởng: {team.captainId?.username}</Text>
+                  <Text style={styles.detailText}>Đội trưởng: {
+                    team.players?.find(p => p.userId == (team.captainId?._id || team.captainId))?.fullName || team.captainId?.username
+                  }</Text>
                 </View>
               </View>
             </View>

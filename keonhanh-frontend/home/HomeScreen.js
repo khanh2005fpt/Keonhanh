@@ -8,6 +8,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -40,7 +41,7 @@ export default function HomeScreen({ navigation }) {
           const minutes = date.getMinutes();
           const hStr = hours.toString().padStart(2, '0');
           const mStr = minutes.toString().padStart(2, '0');
-          
+
           let timeStr;
           if (hours === 0 && minutes === 0) {
             timeStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
@@ -48,15 +49,25 @@ export default function HomeScreen({ navigation }) {
             timeStr = `${hStr}:${mStr} - ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
           }
 
+          let statusVN = m.status;
+          if (m.status === 'open') statusVN = 'Đang tìm đối';
+          else if (m.status === 'matched') statusVN = 'Đã chốt kèo';
+          else if (m.status === 'finished') statusVN = 'Đã kết thúc';
+          else if (m.status === 'cancelled') statusVN = 'Đã hủy';
+
           return {
             id: m._id,
             team: m.creatorTeamId ? m.creatorTeamId.name : 'Đội ẩn danh',
             field: m.fieldName || 'Sân chưa xác định',
             time: timeStr,
-            status: m.status,
+            status: statusVN,
           };
         });
+        
+        // Sort matches by newest first
+        formatted.reverse();
         setMatches(formatted);
+     
       } else {
         setMatches([]);
       }
@@ -155,11 +166,16 @@ export default function HomeScreen({ navigation }) {
         {/* Match List */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Kèo nổi bật 🔥</Text>
-          {!loading && (
-            <TouchableOpacity onPress={fetchMatches}>
-              <Ionicons name="refresh" size={24} color="#22c55e" />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity onPress={() => navigation.navigate('allMatches')}>
+              <Text style={{ color: '#22c55e', fontWeight: '600', marginRight: 16 }}>Xem tất cả</Text>
             </TouchableOpacity>
-          )}
+            {!loading && (
+              <TouchableOpacity onPress={fetchMatches}>
+                <Ionicons name="refresh" size={24} color="#22c55e" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {loading ? (
@@ -180,12 +196,16 @@ export default function HomeScreen({ navigation }) {
           </View>
         ) : matches.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="inbox-outline" size={48} color="#999" />
+            <Ionicons name="football-outline" size={48} color="#999" />
             <Text style={styles.emptyText}>Không có kèo nào</Text>
           </View>
         ) : (
-          matches.map((item) => (
-            <View key={item.id} style={styles.matchCard}>
+          matches.slice(0, 5).map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.matchCard}
+              onPress={() => navigation.navigate('matchDetail', { matchId: item.id })}
+            >
               <View style={styles.matchHeader}>
                 <Text style={styles.teamName}>{item.team}</Text>
 
@@ -204,10 +224,10 @@ export default function HomeScreen({ navigation }) {
                 <Text style={styles.infoText}>{item.time}</Text>
               </View>
 
-              <TouchableOpacity style={styles.joinButton}>
-                <Text style={styles.joinButtonText}>Tham gia kèo</Text>
-              </TouchableOpacity>
-            </View>
+              <View style={styles.joinButton}>
+                <Text style={styles.joinButtonText}>Xem / Tham gia kèo</Text>
+              </View>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>

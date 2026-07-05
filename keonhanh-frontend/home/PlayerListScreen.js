@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useCallback } from "react";
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -11,22 +12,25 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { API_BASE_URL } from "../config/api";
+import { Image as RNImage } from 'react-native';
 
 export default function PlayerListScreen() {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchPlayers();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchPlayers();
+    }, [])
+  );
 
   const fetchPlayers = async () => {
     try {
       setLoading(true);
       const res = await fetch(`${API_BASE_URL}/api/players`);
       const json = await res.json();
-      const filteredPlayers = json.players.filter(
-        (player) => player.isLookingForTeam == true,
+      const filteredPlayers = (json.players || []).filter(
+        (player) => player.isLookingForTeam !== false,
       );
       setPlayers(filteredPlayers);
     } catch (error) {
@@ -42,8 +46,9 @@ export default function PlayerListScreen() {
         <Image
           source={{
             uri:
-              item.avatar ||
-              "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+              (item.avatar && (item.avatar.startsWith('http') || item.avatar.startsWith('data:image')))
+                ? item.avatar
+                : "https://cdn-icons-png.flaticon.com/512/149/149071.png",
           }}
           style={styles.avatarImage}
         />
@@ -78,11 +83,13 @@ export default function PlayerListScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1, zIndex: 2 }}>
             <Text style={styles.hello}>Tìm Đồng Đội 👥</Text>
             <Text style={styles.title}>Danh sách cầu thủ</Text>
           </View>
+        </View>
 
+        <View style={styles.filterContainer}>
           <TouchableOpacity style={styles.filterButton}>
             <Ionicons name="filter" size={24} color="white" />
           </TouchableOpacity>
@@ -124,21 +131,31 @@ const styles = StyleSheet.create({
 
   // Header Styles
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    backgroundColor: '#22c55e',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    marginBottom: 20,
+    elevation: 5,
+    shadowColor: '#22c55e',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
 
   hello: {
     fontSize: 16,
-    color: "#666",
+    color: "rgba(255,255,255,0.8)",
   },
 
   title: {
     fontSize: 28,
     fontWeight: "bold",
+    color: 'white',
     marginTop: 4,
   },
 
@@ -169,6 +186,13 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     color: "#999",
     fontSize: 15,
+  },
+
+
+  filterContainer: {
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    marginBottom: 10,
   },
 
   // Section Title

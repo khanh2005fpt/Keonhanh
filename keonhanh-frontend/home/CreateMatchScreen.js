@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,18 +10,22 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  Modal,
+  FlatList
 } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../auth/AuthContext';
 import { API_BASE_URL } from '../config/api';
+import * as Location from 'expo-location';
 
 export default function CreateMatchScreen({ navigation }) {
   const { user } = useContext(AuthContext);
 
   const [form, setForm] = useState({
-    teamName: '',
     location: '',
     fieldName: '',
     playTime: '',
@@ -34,6 +38,129 @@ export default function CreateMatchScreen({ navigation }) {
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState('date');
 
+  const [showMap, setShowMap] = useState(false);
+  const [mapCoordinate, setMapCoordinate] = useState(null);
+  const [mapRegion, setMapRegion] = useState({
+    latitude: 10.762622,
+    longitude: 106.660172,
+    latitudeDelta: 0.05,
+    longitudeDelta: 0.05,
+  });
+  const [mapSearch, setMapSearch] = useState('');
+
+  const handleOpenMap = async () => {
+    setShowMap(true);
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Quyền truy cập', 'Bạn chưa cấp quyền vị trí. Bản đồ sẽ hiển thị mặc định.');
+      return;
+    }
+    try {
+      let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      if (location && location.coords) {
+        setMapRegion({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        });
+      }
+    } catch (e) {
+      console.log('Error getting location', e);
+    }
+  };
+
+  const searchMap = async () => {
+    if (!mapSearch.trim()) return;
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(mapSearch)}`, {
+        headers: {
+          'User-Agent': 'KeonhanhApp/1.0',
+          'Accept': 'application/json'
+        }
+      });
+      const data = await res.json();
+      if (data && data.length > 0) {
+        selectSearchResult(data[0]);
+      } else {
+        Alert.alert('Không tìm thấy', 'Không tìm thấy địa điểm trên bản đồ.');
+      }
+    } catch (err) {
+      console.log(err);
+      Alert.alert('Lỗi', 'Có lỗi xảy ra khi tìm kiếm.');
+    }
+  };
+
+  const [searchResults, setSearchResults] = useState([]);
+  const searchTimeout = useRef(null);
+
+  const handleSearchChange = (text) => {
+    setMapSearch(text);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+
+    if (!text.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&addressdetails=1&limit=5`, {
+          headers: {
+            'User-Agent': 'KeonhanhApp/1.0',
+            'Accept': 'application/json'
+          }
+        });
+        const data = await res.json();
+        setSearchResults(data || []);
+      } catch (e) {
+        console.log(e);
+      }
+    }, 800);
+  };
+
+  const selectSearchResult = (item) => {
+    const lat = parseFloat(item.lat);
+    const lon = parseFloat(item.lon);
+    setMapRegion({ latitude: lat, longitude: lon, latitudeDelta: 0.01, longitudeDelta: 0.01 });
+    setMapCoordinate({ latitude: lat, longitude: lon });
+    
+    const name = item.display_name.split(',')[0];
+    handleChange('fieldName', name);
+    
+    if (item.address && (item.address.city || item.address.state || item.address.county)) {
+       handleChange('location', item.address.city || item.address.state || item.address.county);
+    }
+    
+    setSearchResults([]);
+    setMapSearch(name);
+  };
+
+  const reverseGeocode = async (lat, lon) => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {
+        headers: {
+          'User-Agent': 'KeonhanhApp/1.0',
+          'Accept': 'application/json'
+        }
+      });
+      const data = await res.json();
+      if (data && data.display_name) {
+        const name = data.display_name.split(',')[0];
+        handleChange('fieldName', name);
+        if (data.address && (data.address.city || data.address.state || data.address.county)) {
+           handleChange('location', data.address.city || data.address.state || data.address.county);
+        }
+      }
+    } catch (err) {
+      console.log('Reverse geocode error', err);
+    }
+  };
+
+  const confirmLocation = () => {
+    setShowMap(false);
+  };
+
   const showMode = (currentMode) => {
     setShowPicker(true);
     setPickerMode(currentMode);
@@ -41,15 +168,15 @@ export default function CreateMatchScreen({ navigation }) {
 
   const onDateChange = (event, selectedDate) => {
     const currentDate = selectedDate || dateObj;
-    setShowPicker(Platform.OS === 'ios'); 
+    setShowPicker(Platform.OS === 'ios');
     setDateObj(currentDate);
-    
+
     const hh = currentDate.getHours().toString().padStart(2, '0');
     const min = currentDate.getMinutes().toString().padStart(2, '0');
     const dd = currentDate.getDate().toString().padStart(2, '0');
     const mm = (currentDate.getMonth() + 1).toString().padStart(2, '0');
     const yyyy = currentDate.getFullYear();
-    
+
     handleChange('playTime', `${hh}:${min} ${dd}/${mm}/${yyyy}`);
   };
 
@@ -78,7 +205,6 @@ export default function CreateMatchScreen({ navigation }) {
 
   const validate = () => {
     const newErrors = {};
-    if (!form.teamName.trim()) newErrors.teamName = 'Vui lòng nhập tên đội bóng';
     if (!form.location.trim()) newErrors.location = 'Vui lòng nhập địa điểm';
     if (!form.fieldName.trim()) newErrors.fieldName = 'Vui lòng nhập tên sân';
     if (!form.playTime.trim()) {
@@ -105,10 +231,12 @@ export default function CreateMatchScreen({ navigation }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          teamName: form.teamName.trim(),
+          userId: user.id,
           location: form.location.trim(),
           fieldName: form.fieldName.trim(),
           playTime: parseDate(form.playTime).toISOString(),
+          latitude: mapCoordinate ? mapCoordinate.latitude : null,
+          longitude: mapCoordinate ? mapCoordinate.longitude : null,
         }),
       });
 
@@ -138,7 +266,7 @@ export default function CreateMatchScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : "height"}
         style={{ flex: 1 }}
       >
         {/* Header */}
@@ -170,23 +298,6 @@ export default function CreateMatchScreen({ navigation }) {
           <View style={styles.formCard}>
 
 
-            {/* teamName */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>
-                <Ionicons name="shield" size={14} color="#22c55e" /> Tên đội bóng
-              </Text>
-              <TextInput
-                style={[styles.input, errors.teamName && styles.inputError]}
-                placeholder="VD: FC Rồng Vàng"
-                placeholderTextColor="#aaa"
-                value={form.teamName}
-                onChangeText={(v) => handleChange('teamName', v)}
-              />
-              {errors.teamName ? (
-                <Text style={styles.errorText}>{errors.teamName}</Text>
-              ) : null}
-            </View>
-
             {/* location */}
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>
@@ -206,9 +317,18 @@ export default function CreateMatchScreen({ navigation }) {
 
             {/* fieldName */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>
-                <Ionicons name="business" size={14} color="#22c55e" /> Tên sân bóng
-              </Text>
+              <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                <Text style={styles.label}>
+                  <Ionicons name="business" size={14} color="#22c55e" /> Tên sân bóng
+                </Text>
+                <TouchableOpacity 
+                  onPress={handleOpenMap}
+                  style={{flexDirection: 'row', alignItems: 'center', marginBottom: 8}}
+                >
+                  <Ionicons name="map" size={14} color="#3b82f6" style={{marginRight: 4}} />
+                  <Text style={{color: '#3b82f6', fontSize: 13, fontWeight: 'bold'}}>Chọn trên bản đồ</Text>
+                </TouchableOpacity>
+              </View>
               <TextInput
                 style={[styles.input, errors.fieldName && styles.inputError]}
                 placeholder="VD: Sân Phú Thọ"
@@ -219,6 +339,11 @@ export default function CreateMatchScreen({ navigation }) {
               {errors.fieldName ? (
                 <Text style={styles.errorText}>{errors.fieldName}</Text>
               ) : null}
+              {mapCoordinate && (
+                <Text style={{ fontSize: 12, color: '#22c55e', marginTop: 4 }}>
+                  <Ionicons name="checkmark-circle" size={12} /> Đã ghim vị trí bản đồ
+                </Text>
+              )}
             </View>
 
             {/* playTime */}
@@ -297,6 +422,76 @@ export default function CreateMatchScreen({ navigation }) {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Map Modal */}
+      <Modal visible={showMap} animationType="slide" transparent={false}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+          <View style={{ flexDirection: 'row', padding: 16, alignItems: 'center', backgroundColor: '#f1f5f9', borderBottomWidth: 1, borderColor: '#e2e8f0' }}>
+            <TouchableOpacity onPress={() => setShowMap(false)} style={{ padding: 4 }}>
+              <Ionicons name="close" size={28} color="#0f172a" />
+            </TouchableOpacity>
+            <View style={{ flex: 1, flexDirection: 'row', marginLeft: 12, backgroundColor: 'white', borderRadius: 8, paddingHorizontal: 12, alignItems: 'center', borderWidth: 1, borderColor: '#cbd5e1' }}>
+              <Ionicons name="search" size={20} color="#64748b" />
+              <TextInput
+                style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 8, fontSize: 16 }}
+                placeholder="Tìm kiếm khu vực / tên sân..."
+                value={mapSearch}
+                onChangeText={handleSearchChange}
+                onSubmitEditing={searchMap}
+                returnKeyType="search"
+              />
+            </View>
+          </View>
+          
+          {searchResults.length > 0 && (
+            <View style={{ position: 'absolute', top: 65, left: 16, right: 16, backgroundColor: 'white', borderRadius: 8, zIndex: 10, elevation: 5, shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.2, shadowRadius: 4, maxHeight: 250 }}>
+              <FlatList
+                data={searchResults}
+                keyExtractor={(item) => item.place_id.toString()}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', flexDirection: 'row', alignItems: 'center' }}
+                    onPress={() => selectSearchResult(item)}
+                  >
+                    <Ionicons name="location-outline" size={20} color="#64748b" style={{ marginRight: 8 }} />
+                    <Text style={{ fontSize: 14, color: '#334155', flex: 1 }} numberOfLines={2}>
+                      {item.display_name}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          )}
+
+          <MapView
+            style={{ flex: 1 }}
+            region={mapRegion}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
+            onRegionChangeComplete={setMapRegion}
+            onPress={(e) => {
+              const coord = e.nativeEvent.coordinate;
+              setMapCoordinate(coord);
+              reverseGeocode(coord.latitude, coord.longitude);
+            }}
+          >
+            {mapCoordinate && <Marker coordinate={mapCoordinate} title="Sân bóng" />}
+          </MapView>
+
+          <View style={{ padding: 20, backgroundColor: 'white', borderTopWidth: 1, borderColor: '#e2e8f0' }}>
+            <Text style={{ textAlign: 'center', marginBottom: 12, color: '#64748b' }}>
+              Chạm vào bản đồ để chọn vị trí sân bóng của bạn.
+            </Text>
+            <TouchableOpacity 
+              style={{ backgroundColor: '#22c55e', padding: 16, borderRadius: 12, alignItems: 'center' }}
+              onPress={confirmLocation}
+            >
+              <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Xác nhận vị trí này</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }

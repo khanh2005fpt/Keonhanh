@@ -128,7 +128,7 @@ const getTeams = async (req, res) => {
     try {
         const teams = await Team.find()
             .populate("captainId", "username")
-            .populate("players", "fullName position avatar location");
+            .populate("players", "fullName position avatar location userId");
 
         return res.status(200).json({
             success: true,
@@ -153,7 +153,7 @@ const getTeamById = async (req, res) => {
 
         const team = await Team.findById(id)
             .populate("captainId", "username")
-            .populate("players", "fullName position avatar location phone");
+            .populate("players", "fullName position avatar location phone userId");
 
         if (!team) {
             return res.status(404).json({ success: false, message: "Không tìm thấy đội bóng." });
@@ -184,7 +184,7 @@ const getMyTeam = async (req, res) => {
             players: profileId
         })
             .populate("captainId", "username")
-            .populate("players", "fullName position avatar location phone");
+            .populate("players", "fullName position avatar location phone userId");
 
         console.log(`[getMyTeam] Đội bóng tìm được: ${team ? team.name : 'Không có'}`);
 
