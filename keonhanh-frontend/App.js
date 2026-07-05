@@ -9,14 +9,13 @@ import PlayerListScreen from './home/PlayerListScreen';
 import CreateMatchScreen from './home/CreateMatchScreen';
 import CreateTeamScreen from './home/CreateTeamScreen';
 import MyTeamScreen from './home/MyTeamScreen';
-// import TeamScreen from './home/TeamScreen';
-// import MatchScreen from './home/MatchScreen';
-// import ProfileScreen from './home/ProfileScreen';
 import RegisterScreen from "./auth/register";
 import LoginScreen from "./auth/login";
 import ProfileSetupScreen from "./profile/profile";
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthContext, AuthProvider } from './auth/AuthContext';
+
+
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 export default function App() {
@@ -100,21 +99,7 @@ function MainTabs() {
           />
         )}
 
-        {/* 
-        <Tab.Screen
-          name="Đội bóng"
-       //   component={TeamScreen}
-        />
 
-        <Tab.Screen
-          name="Kèo đấu"
-      //    component={MatchScreen}
-        />
-
-        <Tab.Screen
-          name="Cá nhân"
-      //    component={ProfileScreen}
-        /> */}
 
       </Tab.Navigator>
     );

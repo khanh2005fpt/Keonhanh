@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import {
   View,
   Text,
@@ -7,35 +7,90 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { API_BASE_URL } from "../config/api";
+import { AuthContext } from "../auth/AuthContext";
 
 export default function PlayerListScreen() {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const { user } = useContext(AuthContext);
+
   useEffect(() => {
     fetchPlayers();
   }, []);
 
+  // =========================
+  // GET PLAYERS
+  // =========================
   const fetchPlayers = async () => {
     try {
       setLoading(true);
+
       const res = await fetch(`${API_BASE_URL}/api/players`);
       const json = await res.json();
-      const filteredPlayers = json.players.filter(
-        (player) => player.isLookingForTeam == true,
+
+      const filteredPlayers = (json.players || []).filter(
+        (player) => player.isLookingForTeam === true
       );
+
       setPlayers(filteredPlayers);
     } catch (error) {
-      console.log("Error:", error);
+      console.log("Error fetchPlayers:", error);
     } finally {
       setLoading(false);
     }
   };
 
+  // =========================
+  // INVITE PLAYER
+  // =========================
+  const invitePlayer = async (playerProfileId) => {
+    try {
+      if (!user) {
+        Alert.alert("Lỗi", "Bạn chưa đăng nhập");
+        return;
+      }
+
+      if (!user.teamId) {
+        Alert.alert("Lỗi", "Bạn chưa có đội");
+        return;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/invitations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          teamId: user.teamId,
+          captainId: user._id, // FIX CHÍNH
+          playerProfileId,
+        }),
+      });
+
+      const data = await res.json();
+
+      console.log("INVITE RESPONSE:", data);
+
+      if (data.success) {
+        Alert.alert("Thành công", "Đã thêm cầu thủ vào đội thành công!");
+      } else {
+        Alert.alert("Thất bại", data.message || "Không thể mời");
+      }
+    } catch (error) {
+      console.log("Invite error:", error);
+      Alert.alert("Lỗi", "Không thể gửi lời mời");
+    }
+  };
+
+  // =========================
+  // RENDER ITEM
+  // =========================
   const renderPlayerCard = ({ item }) => (
     <View style={styles.playerCard}>
       <View style={styles.playerHeader}>
@@ -47,25 +102,22 @@ export default function PlayerListScreen() {
           }}
           style={styles.avatarImage}
         />
+
         <View style={styles.playerInfo}>
           <Text style={styles.playerName}>{item.fullName}</Text>
           <Text style={styles.playerDetail}>⚽ {item.position}</Text>
-
+          <Text style={styles.playerDetail}>📍 {item.location}</Text>
           <Text style={styles.playerDetail}>
-            📍 {item.location}
-          </Text>
-          <Text style={styles.playerDetail}>
-            📞 {item.phone || 'Không có thông tin'}
+            📞 {item.phone || "Không có thông tin"}
           </Text>
         </View>
       </View>
-      {/* 
-      <View style={styles.playerStats}>
-        <View style={styles.statDivider} />
-      </View> */}
 
       <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.inviteButton}>
+        <TouchableOpacity
+          style={styles.inviteButton}
+          onPress={() => invitePlayer(item._id)}
+        >
           <Ionicons name="mail-outline" size={16} color="white" />
           <Text style={styles.inviteButtonText}>Mời Đá</Text>
         </TouchableOpacity>
@@ -76,7 +128,7 @@ export default function PlayerListScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
+        {/* HEADER */}
         <View style={styles.header}>
           <View>
             <Text style={styles.hello}>Tìm Đồng Đội 👥</Text>
@@ -88,9 +140,7 @@ export default function PlayerListScreen() {
           </TouchableOpacity>
         </View>
 
-
-        {/* Player List */}
-
+        {/* CONTENT */}
         {loading ? (
           <View style={styles.loadingContainer}>
             <Text style={styles.loadingText}>Đang tải danh sách...</Text>
@@ -109,20 +159,21 @@ export default function PlayerListScreen() {
           />
         )}
 
-        {/* Bottom Spacing */}
         <View style={{ height: 30 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// =========================
+// STYLES (FIX CHẮC CHẮN CÓ styles)
+// =========================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f4f4f4",
   },
 
-  // Header Styles
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -151,35 +202,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  // Search Container
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 16,
-    marginBottom: 24,
-    paddingHorizontal: 16,
-    height: 48,
-    backgroundColor: "white",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-
-  searchPlaceholder: {
-    marginLeft: 12,
-    color: "#999",
-    fontSize: 15,
-  },
-
-  // Section Title
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 16,
-    marginHorizontal: 16,
-  },
-
-  // Player Card Styles
   playerCard: {
     backgroundColor: "white",
     borderRadius: 18,
@@ -194,20 +216,11 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
-  avatarCircle: {
+  avatarImage: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#22c55e",
-    justifyContent: "center",
-    alignItems: "center",
     marginRight: 14,
-  },
-
-  avatarInitial: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "white",
   },
 
   playerInfo: {
@@ -226,35 +239,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // Player Stats
-  playerStats: {
+  buttonRow: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    marginBottom: 14,
   },
 
-  statItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-
-  statText: {
-    marginLeft: 6,
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-  },
-
-  statDivider: {
-    width: 1,
-    height: 20,
-    backgroundColor: "#e5e7eb",
-    marginHorizontal: 12,
-  },
-
-  // Invite Button
   inviteButton: {
     backgroundColor: "#22c55e",
     flexDirection: "row",
@@ -272,7 +260,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 
-  // Loading & Empty States
   loadingContainer: {
     alignItems: "center",
     paddingVertical: 40,
@@ -293,38 +280,9 @@ const styles = StyleSheet.create({
     color: "#888",
   },
 
-  // Separator
   separator: {
     height: 1,
     backgroundColor: "#f0f0f0",
     marginHorizontal: 16,
-  },
-
-  detailButton: {
-    backgroundColor: "#3b82f6",
-    flexDirection: "row",
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-  },
-
-  detailButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 14,
-    marginLeft: 8,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  avatarImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    marginRight: 14,
   },
 });

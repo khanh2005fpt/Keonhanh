@@ -39,6 +39,12 @@ export default function LoginScreen() {
         }),
       });
       data = await res.json();
+        console.log("========== LOGIN RESPONSE ==========");
+        console.log("DATA =", data);
+        console.log("USER =", data.user);
+        console.log("PROFILE =", data.profile);
+        console.log("PROFILE ID =", data.profile?._id);
+        console.log("TEAM =", data.team);
     } catch (networkError) {
       setError("Không thể kết nối tới server. Kiểm tra lại mạng!");
       setIsSubmitting(false);
@@ -52,7 +58,12 @@ export default function LoginScreen() {
     }
 
     // Lưu thông tin người dùng vào global state
-    await login(data.user);
+    await login({
+      ...data.user,
+      profileId: data.profile?._id || null,
+      profile: data.profile || null,
+      team: data.team || null,
+    });
 
     // Đăng nhập thành công, điều hướng về màn hình chính
     navigation.navigate("main");
@@ -114,6 +125,7 @@ export default function LoginScreen() {
     </KeyboardAvoidingView>
   );
 }
+
 const styles = StyleSheet.create({
   backBtn: {
     marginBottom: 12,

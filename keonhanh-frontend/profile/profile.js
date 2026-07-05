@@ -26,7 +26,7 @@ export default function ProfileSetupScreen() {
     avatar: "",
     fullName: "",
     phone: "",
-    position: POSITIONS[0], 
+    position: POSITIONS[0],
     location: "",
     isLookingForTeam: true,
   });
@@ -183,7 +183,7 @@ export default function ProfileSetupScreen() {
               <Image source={{ uri: form.avatar }} style={styles.avatarImage} />
             ) : (
               <Text style={styles.avatarText}>
-                {username.slice(0, 2).toUpperCase()}
+                {username ? username.slice(0, 2).toUpperCase() : "U"}
               </Text>
             )}
           </View>

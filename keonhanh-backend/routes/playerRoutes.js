@@ -3,13 +3,6 @@ import UserProfile from "../models/UserProfile.js";
 
 const router = express.Router();
 
-/*
-GET /api/players
-Lấy danh sách cầu thủ
-*/
-
-
-
 router.get("/", async (req, res) => {
   try {
     const players = await UserProfile.find()
@@ -24,6 +17,5 @@ router.get("/", async (req, res) => {
     });
   }
 });
-
 
 export default router;

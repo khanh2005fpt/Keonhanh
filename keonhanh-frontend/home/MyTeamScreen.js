@@ -22,34 +22,33 @@ export default function MyTeamScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchMyTeam = async () => {
-    if (!user?.id) return;
+    if (!user?._id) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      // 1. Lấy profileId của tài khoản đang đăng nhập
-      const profileRes = await fetch(`${API_BASE_URL}/api/user-profiles/${user.id}`);
-      const profileData = await profileRes.json();
+      setLoading(true);
 
-      if (!profileRes.ok || !profileData.profile) {
-        setTeam(null);
-        setLoading(false);
-        setRefreshing(false);
-        Alert.alert('Lỗi Profile', profileData.message || 'Chưa thể lấy thông tin cá nhân.');
-        return;
-      }
+      console.log("USER ID:", user._id);
 
-      const profileId = profileData.profile._id;
+      const res = await fetch(
+        `${API_BASE_URL}/api/teams/my-team/${user._id}`
+      );
 
-      // 2. Lấy đội bóng theo đúng profileId
-      const res = await fetch(`${API_BASE_URL}/api/teams/my-team/${profileId}`);
       const data = await res.json();
+
+      console.log("STATUS:", res.status);
+      console.log("DATA:", data);
+
       if (res.ok && data.success) {
         setTeam(data.data);
       } else {
         setTeam(null);
-        Alert.alert('Thông báo từ Server', data.message || 'Không tìm thấy đội bóng.');
       }
-    } catch (error) {
-      console.log('Lỗi fetch team:', error);
-      Alert.alert('Lỗi', 'Không thể kết nối tới server.');
+    } catch (err) {
+      console.log(err);
+      Alert.alert("Lỗi", err.message);
     } finally {
       setLoading(false);
       setRefreshing(false);

@@ -1,5 +1,5 @@
-import React, { createContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const AuthContext = createContext();
 
@@ -7,43 +7,81 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // ======================
+  // LOAD USER FROM STORAGE
+  // ======================
   useEffect(() => {
-    // Tải thông tin người dùng đã lưu khi mở app
     const loadUser = async () => {
       try {
-        const storedUser = await AsyncStorage.getItem('user');
+        const storedUser = await AsyncStorage.getItem("user");
+
         if (storedUser) {
-          setUser(JSON.parse(storedUser));
+          const parsedUser = JSON.parse(storedUser);
+
+          // 🔥 đảm bảo luôn có token field
+          setUser(parsedUser);
         }
       } catch (error) {
-        console.log("Failed to load user info (using in-memory):", error.message);
+        console.log("LOAD USER ERROR:", error.message);
       } finally {
         setLoading(false);
       }
     };
+
     loadUser();
   }, []);
 
-  const login = async (userData) => {
+  // ======================
+  // LOGIN
+  // ======================
+  const login = async (response) => {
     try {
+      /**
+       * EXPECT RESPONSE FROM BACKEND:
+       * {
+       *   user: {...},
+       *   token: "jwt..."
+       * }
+       */
+
+      const userData = {
+        ...response.user,
+        token: response.token, // 🔥 BẮT BUỘC
+      };
+
       setUser(userData);
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
+
+      await AsyncStorage.setItem("user", JSON.stringify(userData));
     } catch (error) {
-      console.log("Failed to save user info (using in-memory):", error.message);
+      console.log("LOGIN ERROR:", error.message);
     }
   };
 
+  // ======================
+  // LOGOUT
+  // ======================
   const logout = async () => {
     try {
       setUser(null);
-      await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem("user");
     } catch (error) {
-      console.log("Failed to clear user info (using in-memory):", error.message);
+      console.log("LOGOUT ERROR:", error.message);
     }
   };
 
+  // ======================
+  // CONTEXT VALUE
+  // ======================
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn: !!user, login, logout, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        isLoggedIn: !!user,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

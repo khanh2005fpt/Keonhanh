@@ -25,7 +25,7 @@ const SKILL_LABELS = { 'Sơ cấp': 'Sơ cấp', 'Trung cấp': 'Trung cấp', '
 const SKILL_COLORS = { 'Sơ cấp': '#22c55e', 'Trung cấp': '#f59e0b', 'Chuyên nghiệp': '#ef4444' };
 
 export default function CreateTeamScreen({ navigation }) {
-  const { user } = useContext(AuthContext);
+  const {  user, login  } = useContext(AuthContext);
 
   const [form, setForm] = useState({
     name: '',
@@ -79,47 +79,86 @@ export default function CreateTeamScreen({ navigation }) {
     const newErrors = {};
     if (!form.name.trim()) newErrors.name = 'Vui lòng nhập tên đội';
     if (!form.location.trim()) newErrors.location = 'Vui lòng nhập địa điểm';
-    if (!user?.id) newErrors.captain = 'Bạn phải đăng nhập để tạo đội';
+    if (!user?._id) {
+      newErrors.captain = "Bạn phải đăng nhập để tạo đội";
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleCreateTeam = async () => {
-    if (!validate()) return;
+ const handleCreateTeam = async () => {
+  if (!validate()) return;
 
-    let res, data;
-    try {
-      setLoading(true);
-      res = await fetch(`${API_BASE_URL}/api/teams`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name.trim(),
-          logo: form.logo.trim(),
-          captainId: user.id,
-          location: form.location.trim(),
-          skillLevel: form.skillLevel,
-          isRecruiting: form.isRecruiting,
-          players: [],
-        }),
-      });
-      data = await res.json();
-    } catch {
-      Alert.alert('❌ Lỗi kết nối', 'Không thể kết nối đến server. Kiểm tra lại mạng!');
-      setLoading(false);
+  setLoading(true);
+
+  try {
+    // Hỗ trợ cả id và _id
+    const captainId = user?.id || user?._id;
+
+    console.log("USER:", user);
+
+    console.log("REQUEST BODY:", {
+      name: form.name.trim(),
+      logo: form.logo,
+      captainId,
+      location: form.location.trim(),
+      skillLevel: form.skillLevel,
+      isRecruiting: form.isRecruiting,
+      players: [],
+    });
+
+    const res = await fetch(`${API_BASE_URL}/api/teams`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: form.name.trim(),
+        logo: form.logo,
+        captainId,
+        location: form.location.trim(),
+        skillLevel: form.skillLevel,
+        isRecruiting: form.isRecruiting,
+        players: [],
+      }),
+    });
+
+    const data = await res.json();
+
+    console.log("STATUS:", res.status);
+    console.log("RESPONSE:", data);
+
+    if (!res.ok) {
+      Alert.alert("Lỗi", data.message || "Không thể tạo đội.");
       return;
     }
 
-    setLoading(false);
+    if (data.success) {
+      await login({
+        ...user,
+        teamId: data.data._id,
+      });
 
-    if (res.ok && data.success) {
-      Alert.alert('🎉 Thành công', 'Tạo đội bóng thành công!', [
-        { text: 'OK', onPress: () => navigation.goBack() },
+      Alert.alert("Thành công", "Tạo đội thành công!", [
+        {
+          text: "OK",
+          onPress: () => navigation.goBack(),
+        },
       ]);
     } else {
-      Alert.alert('❌ Lỗi', data.message || 'Không thể tạo đội. Thử lại!');
+      Alert.alert("Lỗi", data.message);
     }
-  };
+  } catch (err) {
+    console.log("CREATE TEAM ERROR:", err);
+
+    Alert.alert(
+      "Lỗi kết nối",
+      "Không thể kết nối tới server."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <SafeAreaView style={styles.container}>
