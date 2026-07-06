@@ -14,9 +14,9 @@ const invitationSchema = new mongoose.Schema(
       required: true,
     },
 
-    playerProfileId: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "UserProfile",
+      ref: "User",
       required: true,
     },
 

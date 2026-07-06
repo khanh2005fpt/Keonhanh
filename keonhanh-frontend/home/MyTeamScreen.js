@@ -16,38 +16,32 @@ import { API_BASE_URL } from '../config/api';
 import { AuthContext } from '../auth/AuthContext';
 
 export default function MyTeamScreen({ navigation }) {
-  const { user } = useContext(AuthContext);
+  const { user, updateUser } = useContext(AuthContext);
   const [team, setTeam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [invitations, setInvitations] = useState([]);
+  const [processingId, setProcessingId] = useState(null);
 
   const fetchMyTeam = async () => {
-    if (!user?._id) {
-      setLoading(false);
-      return;
-    }
+    if (!user?._id) return;
 
     try {
-      setLoading(true);
-
-      console.log("USER ID:", user._id);
-
       const res = await fetch(
         `${API_BASE_URL}/api/teams/my-team/${user._id}`
       );
 
       const data = await res.json();
 
-      console.log("STATUS:", res.status);
-      console.log("DATA:", data);
+      console.log("TEAM DATA:", data);
 
       if (res.ok && data.success) {
         setTeam(data.data);
       } else {
         setTeam(null);
       }
+
     } catch (err) {
-      console.log(err);
       Alert.alert("Lỗi", err.message);
     } finally {
       setLoading(false);
@@ -55,13 +49,110 @@ export default function MyTeamScreen({ navigation }) {
     }
   };
 
+  const fetchInvitations = async () => {
+    if (!user?.token) {
+        setInvitations([]);
+        return;
+    }
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/invitations/me`,
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+      console.log("INVITATIONS:", data);
+
+      if (data.success) {
+        setInvitations(data.data || []);
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+const handleAccept = async (id) => {
+  try {
+    setProcessingId(id);
+
+    const res = await fetch(
+      `${API_BASE_URL}/api/invitations/${id}/accept`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
+      }
+    );
+
+    const data = await res.json();
+
+    if (!data.success) {
+      Alert.alert("Lỗi", data.message);
+      return;
+    }
+
+    Alert.alert("Thành công", "Bạn đã tham gia đội.");
+
+    await fetchInvitations();
+
+    const teamRes = await fetch(
+      `${API_BASE_URL}/api/teams/my-team/${user._id}`
+    );
+
+    const teamData = await teamRes.json();
+
+    setTeam(teamData?.data || teamData?.team || null);
+
+  } catch (err) {
+    Alert.alert("Lỗi", err.message);
+  } finally {
+    setProcessingId(null);
+  }
+};
+
+const handleReject = async (id) => {
+  try {
+    setProcessingId(id);
+
+    const res = await fetch(
+      `${API_BASE_URL}/api/invitations/${id}/reject`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.success) {
+      await fetchInvitations();
+    } else {
+      Alert.alert("Lỗi", data.message);
+    }
+  } catch (err) {
+    Alert.alert("Lỗi", err.message);
+  } finally {
+    setProcessingId(null);
+  }
+};
+
   useEffect(() => {
     fetchMyTeam();
+    fetchInvitations();
   }, [user]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchMyTeam();
+    fetchInvitations();
   };
 
   if (loading) {
@@ -87,7 +178,61 @@ export default function MyTeamScreen({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        {!team && invitations.length > 0 && (
+      <View style={styles.invitationBox}>
+        <Text style={styles.invitationTitle}>
+          Lời mời tham gia đội ({invitations.length})
+        </Text>
+
+      {invitations.map((item) => (
+        <View key={item._id} style={styles.invitationCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.invitationTeam}>
+              {item.teamId?.name}
+            </Text>
+
+            <Text style={styles.invitationSub}>
+              📍 {item.teamId?.location}
+            </Text>
+
+            <Text style={styles.invitationSub}>
+              Đội trưởng: {item.captainId?.username}
+            </Text>
+          </View>
+
+          {processingId === item._id ? (
+            <ActivityIndicator color="#22c55e" />
+          ) : (
+            <View style={{ flexDirection: "row" }}>
+              <TouchableOpacity
+                style={styles.rejectBtn}
+                onPress={() => handleReject(item._id)}
+              >
+                <Ionicons
+                  name="close"
+                  size={18}
+                  color="white"
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.acceptBtn}
+                onPress={() => handleAccept(item._id)}
+              >
+                <Ionicons
+                  name="checkmark"
+                  size={18}
+                  color="white"
+                />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      ))}
+    </View>
+  )}
         {!team ? (
+
           <View style={styles.emptyBox}>
             <Ionicons name="shield-half-outline" size={80} color="#cbd5e1" />
             <Text style={styles.emptyTitle}>Bạn chưa có đội bóng</Text>
@@ -150,7 +295,9 @@ export default function MyTeamScreen({ navigation }) {
                 <Text style={styles.emptyPlayersText}>Đội chưa có thành viên nào khác.</Text>
               </View>
             ) : (
-              team.players.map((player) => (
+              team.players
+              .filter(p => p)
+              .map((player) => (
                 <View key={player._id} style={styles.playerCard}>
                   <View style={styles.playerAvatar}>
                     <Ionicons name="person" size={20} color="white" />
@@ -224,4 +371,55 @@ const styles = StyleSheet.create({
   playerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#3b82f6', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   playerName: { fontSize: 15, fontWeight: 'bold', color: '#1e293b', marginBottom: 2 },
   playerPos: { fontSize: 13, color: '#64748b' },
+  invitationBox: {
+  marginBottom: 20,
+},
+
+invitationTitle: {
+  fontSize: 18,
+  fontWeight: "bold",
+  marginBottom: 10,
+  color: "#0f172a",
+},
+
+invitationCard: {
+  backgroundColor: "white",
+  borderRadius: 12,
+  padding: 14,
+  marginBottom: 12,
+  flexDirection: "row",
+  alignItems: "center",
+  elevation: 2,
+},
+
+invitationTeam: {
+  fontSize: 16,
+  fontWeight: "bold",
+  color: "#111827",
+},
+
+invitationSub: {
+  fontSize: 13,
+  color: "#64748b",
+  marginTop: 2,
+},
+
+acceptBtn: {
+  backgroundColor: "#16a34a",
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  justifyContent: "center",
+  alignItems: "center",
+  marginLeft: 8,
+},
+
+rejectBtn: {
+  backgroundColor: "#ef4444",
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  justifyContent: "center",
+  alignItems: "center",
+},
 });

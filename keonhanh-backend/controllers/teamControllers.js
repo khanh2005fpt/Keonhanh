@@ -233,30 +233,29 @@ export const getTeamById = async (req, res) => {
     });
   }
 };
+
 export const getMyTeam = async (req, res) => {
   try {
     const { userId } = req.params;
 
+    // 1. lấy profile (nếu có)
     const profile = await UserProfile.findOne({ userId });
 
-    if (!profile) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy hồ sơ cầu thủ",
-      });
-    }
-
-    const team = await Team.findOne({
+    // 2. build query an toàn
+    const query = {
       $or: [
         { captainId: userId },
-        { players: profile._id },
       ],
-    })
+    };
+
+    // chỉ add players nếu profile tồn tại
+    if (profile?._id) {
+      query.$or.push({ players: profile._id });
+    }
+
+    const team = await Team.findOne(query)
       .populate("captainId", "username")
-      .populate(
-        "players",
-        "fullName position avatar location phone"
-      );
+      .populate("players", "fullName position avatar location phone");
 
     if (!team) {
       return res.status(404).json({
@@ -269,9 +268,9 @@ export const getMyTeam = async (req, res) => {
       success: true,
       data: team,
     });
+
   } catch (err) {
     console.log(err);
-
     return res.status(500).json({
       success: false,
       message: err.message,

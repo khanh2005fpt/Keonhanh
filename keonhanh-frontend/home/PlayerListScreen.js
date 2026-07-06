@@ -65,10 +65,11 @@ export default function PlayerListScreen() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${user.token}`,
         },
         body: JSON.stringify({
           teamId: user.teamId,
-          captainId: user._id, // FIX CHÍNH
+          captainId: user._id,
           playerProfileId,
         }),
       });

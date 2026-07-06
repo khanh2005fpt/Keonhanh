@@ -17,25 +17,51 @@ export const createInvitation = async (req, res) => {
       });
     }
 
-    // Check if player is already in team
-    if (team.players.includes(playerProfileId)) {
-      return res.status(400).json({
+    const profile = await UserProfile.findById(playerProfileId);
+    if (!profile) {
+      return res.status(404).json({
         success: false,
-        message: "Cầu thủ đã ở trong đội của bạn.",
+        message: "Không tìm thấy hồ sơ cầu thủ.",
       });
     }
 
-    team.players.push(playerProfileId);
-    await team.save();
+    // check đã trong team chưa (đúng chuẩn là profile._id)
+    const alreadyInTeam = team.players
+      .map(String)
+      .includes(String(profile._id));
 
-    // Update player to no longer looking for team
-    await UserProfile.findByIdAndUpdate(playerProfileId, {
-      isLookingForTeam: false,
+    if (alreadyInTeam) {
+      return res.status(400).json({
+        success: false,
+        message: "Cầu thủ đã ở trong đội.",
+      });
+    }
+
+    // check đã invite chưa (theo userId)
+    const existing = await Invitation.findOne({
+      teamId,
+      userId: profile.userId,
+      status: "pending",
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: "Cầu thủ này đã được mời rồi.",
+      });
+    }
+
+    const invitation = await Invitation.create({
+      teamId,
+      captainId,
+      userId: profile.userId,
+      status: "pending",
     });
 
     return res.json({
       success: true,
-      message: "Đã thêm vào đội thành công",
+      message: "Đã gửi lời mời thành công!",
+      data: invitation,
     });
   } catch (err) {
     return res.status(500).json({
@@ -59,17 +85,8 @@ export const getMyInvitations = async (req, res) => {
       });
     }
 
-    const profile = await UserProfile.findOne({ userId });
-
-    if (!profile) {
-      return res.json({
-        success: true,
-        data: [],
-      });
-    }
-
     const invitations = await Invitation.find({
-      playerProfileId: profile._id,
+      userId,
       status: "pending",
     })
       .populate("teamId", "name logo location")
@@ -79,7 +96,6 @@ export const getMyInvitations = async (req, res) => {
       success: true,
       data: invitations,
     });
-
   } catch (err) {
     return res.status(500).json({
       success: false,
@@ -96,23 +112,56 @@ export const acceptInvitation = async (req, res) => {
     const invitation = await Invitation.findById(req.params.id);
 
     if (!invitation) {
-      return res.status(404).json({
-        success: false,
-        message: "Not found",
-      });
+      return res.status(404).json({ success: false });
     }
 
     const team = await Team.findById(invitation.teamId);
+    if (!team) {
+      return res.status(404).json({ success: false });
+    }
 
-    team.players.push(invitation.playerProfileId);
+    // 🔥 LẤY PROFILE CHÍNH XÁC
+    const profile = await UserProfile.findOne({
+      userId: invitation.userId,
+    });
+
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy profile",
+      });
+    }
+
+    // 🔥 FIX: đảm bảo không null + đúng type
+    team.players = team.players.filter(p => p); // xoá null rác
+
+    const exists = team.players.some(
+      p => p.toString() === profile._id.toString()
+    );
+
+    if (!exists) {
+      team.players.push(profile._id);
+    }
+
     await team.save();
 
     invitation.status = "accepted";
     await invitation.save();
 
+    await UserProfile.updateOne(
+      { userId: invitation.userId },
+      { isLookingForTeam: false }
+    );
+
+    // 🔥 IMPORTANT: RETURN POPULATED TEAM
+    const updatedTeam = await Team.findById(team._id)
+      .populate("captainId", "username")
+      .populate("players", "fullName position avatar location phone");
+
     return res.json({
       success: true,
-      message: "accepted",
+      data: updatedTeam,
+      message: "Invitation accepted",
     });
 
   } catch (err) {
@@ -134,9 +183,8 @@ export const rejectInvitation = async (req, res) => {
 
     return res.json({
       success: true,
-      message: "rejected",
+      message: "Đã từ chối lời mời.",
     });
-
   } catch (err) {
     return res.status(500).json({
       success: false,

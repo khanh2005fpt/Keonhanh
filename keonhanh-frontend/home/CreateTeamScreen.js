@@ -25,7 +25,7 @@ const SKILL_LABELS = { 'Sơ cấp': 'Sơ cấp', 'Trung cấp': 'Trung cấp', '
 const SKILL_COLORS = { 'Sơ cấp': '#22c55e', 'Trung cấp': '#f59e0b', 'Chuyên nghiệp': '#ef4444' };
 
 export default function CreateTeamScreen({ navigation }) {
-  const {  user, login  } = useContext(AuthContext);
+  const { user, updateUser } = useContext(AuthContext);
 
   const [form, setForm] = useState({
     name: '',
@@ -79,7 +79,7 @@ export default function CreateTeamScreen({ navigation }) {
     const newErrors = {};
     if (!form.name.trim()) newErrors.name = 'Vui lòng nhập tên đội';
     if (!form.location.trim()) newErrors.location = 'Vui lòng nhập địa điểm';
-    if (!user?._id) {
+    if (!user || !user._id) {
       newErrors.captain = "Bạn phải đăng nhập để tạo đội";
     }
     setErrors(newErrors);
@@ -93,7 +93,7 @@ export default function CreateTeamScreen({ navigation }) {
 
   try {
     // Hỗ trợ cả id và _id
-    const captainId = user?.id || user?._id;
+    const captainId = user?._id;
 
     console.log("USER:", user);
 
@@ -134,10 +134,11 @@ export default function CreateTeamScreen({ navigation }) {
     }
 
     if (data.success) {
-      await login({
-        ...user,
-        teamId: data.data._id,
-      });
+      // Cập nhật teamId vào AuthContext để các màn hình khác biết user đã có đội
+      const newTeamId = data.data?._id;
+      if (newTeamId) {
+        await updateUser({ teamId: newTeamId });
+      }
 
       Alert.alert("Thành công", "Tạo đội thành công!", [
         {

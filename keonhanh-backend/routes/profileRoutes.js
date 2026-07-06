@@ -113,19 +113,19 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.put("/:profileId", async (req, res) => {
+router.put("/:userId", async (req, res) => {
   try {
-    const { profileId } = req.params;
+    const { userId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(profileId)) {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({
         success: false,
-        message: "ProfileId không hợp lệ.",
+        message: "UserId không hợp lệ.",
       });
     }
 
-    const profile = await UserProfile.findByIdAndUpdate(
-      profileId,
+    const profile = await UserProfile.findOneAndUpdate(
+      { userId },
       req.body,
       {
         new: true,
@@ -154,37 +154,5 @@ router.put("/:profileId", async (req, res) => {
   }
 });
 
-router.get("/profile/:profileId", async (req, res) => {
-  try {
-    const { profileId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(profileId)) {
-      return res.status(400).json({
-        success: false,
-        message: "ProfileId không hợp lệ.",
-      });
-    }
-
-    const profile = await UserProfile.findById(profileId);
-
-    if (!profile) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy profile.",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      profile,
-    });
-
-  } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
-});
 
 export default router;

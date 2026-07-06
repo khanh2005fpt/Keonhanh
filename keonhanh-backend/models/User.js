@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       minlength: 3,
-    },  
+    },
     password: {
       type: String,
       required: true,
@@ -21,21 +21,48 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  },
+  }
 );
 
-userSchema.statics.hashPassword = function hashPassword(password) {
+/**
+ * =========================
+ * HASH PASSWORD (REGISTER)
+ * =========================
+ */
+userSchema.statics.hashPassword = function (password) {
   const salt = crypto.randomBytes(16).toString("hex");
-  const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+  const hash = crypto
+    .scryptSync(password, salt, 64)
+    .toString("hex");
 
   return `${salt}:${hash}`;
 };
 
-userSchema.methods.isValidPassword = function isValidPassword(password) {
-  const [salt, storedHash] = this.password.split(":");
-  const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+/**
+ * =========================
+ * CHECK PASSWORD (LOGIN)
+ * SAFE VERSION - NO CRASH
+ * =========================
+ */
+userSchema.methods.isValidPassword = function (password) {
+  try {
+    if (!this.password || !this.password.includes(":")) {
+      return false;
+    }
 
-  return crypto.timingSafeEqual(Buffer.from(storedHash, "hex"), Buffer.from(hash, "hex"));
+    const [salt, storedHash] = this.password.split(":");
+
+    const hash = crypto
+      .scryptSync(password, salt, 64)
+      .toString("hex");
+
+    // SAFE compare (NO timingSafeEqual crash)
+    return storedHash === hash;
+
+  } catch (err) {
+    console.error("PASSWORD CHECK ERROR:", err);
+    return false;
+  }
 };
 
 export default mongoose.model("User", userSchema, "Users");

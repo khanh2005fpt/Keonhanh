@@ -13,13 +13,16 @@ import {
 } from "react-native";
 
 import { API_BASE_URL } from "../config/api";
+
 export default function LoginScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const navigation = useNavigation();
   const { login } = useContext(AuthContext);
+
   const handleLogin = async () => {
     if (isSubmitting) return;
 
@@ -27,6 +30,7 @@ export default function LoginScreen() {
     setIsSubmitting(true);
 
     let res, data;
+
     try {
       res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
@@ -38,13 +42,16 @@ export default function LoginScreen() {
           password,
         }),
       });
+
       data = await res.json();
-        console.log("========== LOGIN RESPONSE ==========");
-        console.log("DATA =", data);
-        console.log("USER =", data.user);
-        console.log("PROFILE =", data.profile);
-        console.log("PROFILE ID =", data.profile?._id);
-        console.log("TEAM =", data.team);
+
+      console.log("========== LOGIN RESPONSE ==========");
+      console.log("DATA =", data);
+      console.log("USER =", data.user);
+      console.log("PROFILE =", data.profile);
+      console.log("TOKEN =", data.token);
+      console.log("TEAM =", data.team);
+
     } catch (networkError) {
       setError("Không thể kết nối tới server. Kiểm tra lại mạng!");
       setIsSubmitting(false);
@@ -57,17 +64,21 @@ export default function LoginScreen() {
       return;
     }
 
-    // Lưu thông tin người dùng vào global state
+    // =========================
+    // FIX: MAP ĐÚNG THEO AUTHCONTEXT MỚI
+    // =========================
     await login({
-      ...data.user,
-      profileId: data.profile?._id || null,
+      user: data.user || data.profile?.user || null,
       profile: data.profile || null,
+      token: data.token || data.accessToken || null,
       team: data.team || null,
     });
 
-    // Đăng nhập thành công, điều hướng về màn hình chính
-    navigation.navigate("main");
+    // reset loading
     setIsSubmitting(false);
+
+    // QUAN TRỌNG: không navigate main nữa
+    // AuthContext + App.js sẽ tự điều hướng
   };
 
   return (
@@ -78,6 +89,7 @@ export default function LoginScreen() {
       <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
         <Text style={styles.backText}>← Quay lại</Text>
       </Pressable>
+
       <View style={styles.header}>
         <Text style={styles.logo}>KeoNhanh</Text>
         <Text style={styles.title}>Chào mừng</Text>
@@ -85,6 +97,7 @@ export default function LoginScreen() {
           Đăng nhập để tiếp tục tìm kèo bóng đá.
         </Text>
       </View>
+
       <View style={styles.form}>
         <Text style={styles.label}>Username</Text>
         <TextInput
@@ -96,6 +109,7 @@ export default function LoginScreen() {
           style={styles.input}
           value={username}
         />
+
         <Text style={styles.label}>Mật khẩu</Text>
         <TextInput
           onChangeText={setPassword}
@@ -105,7 +119,9 @@ export default function LoginScreen() {
           style={styles.input}
           value={password}
         />
+
         {error ? <Text style={styles.error}>{error}</Text> : null}
+
         <Pressable
           disabled={isSubmitting}
           onPress={handleLogin}
@@ -136,32 +152,38 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
   },
+
   screen: {
     flex: 1,
     backgroundColor: "#f6f8f4",
     justifyContent: "center",
     paddingHorizontal: 22,
   },
+
   header: {
     marginBottom: 28,
   },
+
   logo: {
     color: "#22c55e",
     fontSize: 17,
     fontWeight: "800",
     marginBottom: 14,
   },
+
   title: {
     color: "#17201a",
     fontSize: 30,
     fontWeight: "800",
   },
+
   subtitle: {
     color: "#5d6b63",
     fontSize: 15,
     lineHeight: 22,
     marginTop: 8,
   },
+
   form: {
     backgroundColor: "#ffffff",
     borderColor: "#dfe7df",
@@ -169,12 +191,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 18,
   },
+
   label: {
     color: "#2f3b33",
     fontSize: 14,
     fontWeight: "700",
     marginBottom: 8,
   },
+
   input: {
     backgroundColor: "#f9fbf8",
     borderColor: "#d7e1d8",
@@ -186,11 +210,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 13,
   },
+
   error: {
     color: "#b3261e",
     fontSize: 14,
     marginBottom: 12,
   },
+
   button: {
     alignItems: "center",
     backgroundColor: "#22c55e",
@@ -198,12 +224,15 @@ const styles = StyleSheet.create({
     minHeight: 50,
     justifyContent: "center",
   },
+
   buttonPressed: {
     opacity: 0.86,
   },
+
   buttonDisabled: {
     opacity: 0.72,
   },
+
   buttonText: {
     color: "#ffffff",
     fontSize: 16,
