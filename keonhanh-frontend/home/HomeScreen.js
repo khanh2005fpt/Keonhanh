@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -133,9 +134,25 @@ export default function HomeScreen({ navigation }) {
         <Text style={styles.sectionTitle}>Tính năng</Text>
 
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => {
+              if (!isLoggedIn) {
+                Alert.alert(
+                  '🔒 Cần đăng nhập',
+                  'Bạn cần đăng nhập để tìm và xin gia nhập đội bóng.',
+                  [
+                    { text: 'Hủy', style: 'cancel' },
+                    { text: 'Đăng nhập', onPress: () => navigation.navigate('login') },
+                  ]
+                );
+                return;
+              }
+              navigation.navigate('findTeam');
+            }}
+          >
             <Ionicons name="people" size={40} color="#22c55e" />
-            <Text style={styles.actionText}>Tìm đối</Text>
+            <Text style={styles.actionText}>Tìm đội</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

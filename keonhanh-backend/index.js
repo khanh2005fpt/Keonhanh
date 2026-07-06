@@ -9,6 +9,7 @@ import playerRoutes from "./routes/playerRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import matchRoutes from "./routes/matchRoutes.js"
 import teamRoutes from "./routes/teamRoutes.js"
+import joinRequestRoutes from "./routes/joinRequestRoutes.js"
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
@@ -20,6 +21,7 @@ app.use("/api/players", playerRoutes);
 app.use("/api/user-profiles", profileRoutes);
 app.use("/api/matches", matchRoutes);
 app.use("/api/teams", teamRoutes);
+app.use("/api/join-requests", joinRequestRoutes);
 
 const PORT = process.env.PORT || 9999;
 const MONGOURL = process.env.MONGO_URL;

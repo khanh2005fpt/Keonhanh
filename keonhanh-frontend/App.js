@@ -9,6 +9,7 @@ import PlayerListScreen from './home/PlayerListScreen';
 import CreateMatchScreen from './home/CreateMatchScreen';
 import CreateTeamScreen from './home/CreateTeamScreen';
 import MyTeamScreen from './home/MyTeamScreen';
+import FindTeamScreen from './home/FindTeamScreen';
 // import TeamScreen from './home/TeamScreen';
 import MatchScreen from './home/MatchScreen';
 // import ProfileScreen from './home/ProfileScreen';
@@ -37,6 +38,7 @@ export default function App() {
           <Stack.Screen name="createTeam" component={CreateTeamScreen} />
           <Stack.Screen name="myTeam" component={MyTeamScreen} />
           <Stack.Screen name="allMatches" component={AllMatchesScreen} />
+          <Stack.Screen name="findTeam" component={FindTeamScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </AuthProvider>

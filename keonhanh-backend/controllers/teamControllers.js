@@ -239,4 +239,66 @@ const deleteTeam = async (req, res) => {
     }
 };
 
-export { createTeam, getTeams, getTeamById, getMyTeam, addPlayerToTeam, deleteTeam };
+// PATCH /api/teams/:teamId/toggle-recruiting — Đội trưởng bật/tắt tuyển quân
+const TEAM_MAX_SIZE = 14;
+const TEAM_MIN_TO_CLOSE = 7;
+
+const toggleRecruiting = async (req, res) => {
+    try {
+        const { teamId } = req.params;
+        const { captainUserId } = req.body;
+
+        if (!mongoose.Types.ObjectId.isValid(teamId)) {
+            return res.status(400).json({ success: false, message: "ID đội không hợp lệ." });
+        }
+
+        const team = await Team.findById(teamId);
+        if (!team) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy đội bóng." });
+        }
+
+        // Kiểm tra quyền đội trưởng
+        if (team.captainId.toString() !== captainUserId) {
+            return res.status(403).json({ success: false, message: "Chỉ đội trưởng mới có thể thao tác này." });
+        }
+
+        const currentCount = team.players.length;
+
+        // Nếu đội đã đủ 14 người → khóa cứng, không cho thay đổi
+        if (currentCount >= TEAM_MAX_SIZE) {
+            team.isRecruiting = false;
+            team.recruitingStatus = "Full";
+            await team.save();
+            return res.status(400).json({
+                success: false,
+                message: `Đội đã đủ ${TEAM_MAX_SIZE} người, không thể mở tuyển thêm.`
+            });
+        }
+
+        // Muốn dừng tuyển thủ công: cần ít nhất 7 người
+        if (team.isRecruiting && currentCount < TEAM_MIN_TO_CLOSE) {
+            return res.status(400).json({
+                success: false,
+                message: `Cần có ít nhất ${TEAM_MIN_TO_CLOSE} người trước khi dừng tuyển (hiện tại: ${currentCount}).`
+            });
+        }
+
+        // Toggle
+        team.isRecruiting = !team.isRecruiting;
+        team.recruitingStatus = team.isRecruiting ? "Searching" : "Full";
+        await team.save();
+
+        return res.status(200).json({
+            success: true,
+            isRecruiting: team.isRecruiting,
+            message: team.isRecruiting
+                ? "Đã mở lại tuyển thành viên."
+                : "Đã dừng tuyển thành viên. Người khác sẽ không thể gửi yêu cầu gia nhập."
+        });
+
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+export { createTeam, getTeams, getTeamById, getMyTeam, addPlayerToTeam, deleteTeam, toggleRecruiting };
