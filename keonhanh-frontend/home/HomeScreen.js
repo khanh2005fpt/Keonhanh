@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { AuthContext } from '../auth/AuthContext';
 import {
   View,
@@ -7,6 +8,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,34 +20,49 @@ export default function HomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchMatches();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchMatches();
+    }, [])
+  );
 
   const fetchMatches = async () => {
     try {
       setLoading(true);
 
-      const response = await fetch(`${API_BASE_URL}/api/players`);
-      const data = await response.json();
+      const response = await fetch(`${API_BASE_URL}/api/matches`);
+      const result = await response.json();
 
-      // console.log("API DATA:", data);
+      if (response.ok && result.success) {
+        const matchesData = result.data || [];
+        const formatted = matchesData.map((m) => {
+          const date = new Date(m.playTime);
+          const hours = date.getHours();
+          const minutes = date.getMinutes();
+          const hStr = hours.toString().padStart(2, '0');
+          const mStr = minutes.toString().padStart(2, '0');
+          
+          let timeStr;
+          if (hours === 0 && minutes === 0) {
+            timeStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+          } else {
+            timeStr = `${hStr}:${mStr} - ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+          }
 
-      const players = data.players || [];
-
-      if (error) return <Text>{error}</Text>;
-
-      const formatted = players.map((p, i) => ({
-        id: p._id || i,
-        team: p.team || 'Chưa xác định',
-        field: p.field || 'Sân không xác định',
-        time: p.time || 'Không có giờ',
-        status: p.status || 'Chờ xác nhận',
-      }));
-
-      setMatches(formatted);
+          return {
+            id: m._id,
+            team: m.creatorTeamId ? m.creatorTeamId.name : 'Đội ẩn danh',
+            field: m.fieldName || 'Sân chưa xác định',
+            time: timeStr,
+            status: m.status,
+          };
+        });
+        setMatches(formatted);
+      } else {
+        setMatches([]);
+      }
     } catch (err) {
-      console.log("ERROR:", err);
+      console.log("ERROR fetching matches:", err);
     } finally {
       setLoading(false);
     }
@@ -54,14 +71,14 @@ export default function HomeScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
-        
+
         <View style={styles.header}>
-          
+
           <View>
             <Text style={styles.hello}>Xin chào {isLoggedIn ? user?.username : ""} 👋</Text>
           </View>
-        {isLoggedIn ? (
-            <TouchableOpacity 
+          {isLoggedIn ? (
+            <TouchableOpacity
               style={styles.avatar}
               onPress={() => navigation.navigate('profile', { userId: user?.id, username: user?.username })}
             >
@@ -69,13 +86,13 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
           ) : (
             <View style={styles.authButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.loginBtn}
                 onPress={() => navigation.navigate('login')}
               >
                 <Text style={styles.loginBtnText}>Đăng nhập</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.registerBtn}
                 onPress={() => navigation.navigate('register')}
               >
@@ -83,7 +100,7 @@ export default function HomeScreen({ navigation }) {
               </TouchableOpacity>
             </View>
           )}
-  
+
         </View>
 
         {/* Banner */}
@@ -106,9 +123,25 @@ export default function HomeScreen({ navigation }) {
         <Text style={styles.sectionTitle}>Tính năng</Text>
 
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => {
+              if (!isLoggedIn) {
+                Alert.alert(
+                  '🔒 Cần đăng nhập',
+                  'Bạn cần đăng nhập để tìm và xin gia nhập đội bóng.',
+                  [
+                    { text: 'Hủy', style: 'cancel' },
+                    { text: 'Đăng nhập', onPress: () => navigation.navigate('login') },
+                  ]
+                );
+                return;
+              }
+              navigation.navigate('findTeam');
+            }}
+          >
             <Ionicons name="people" size={40} color="#22c55e" />
-            <Text style={styles.actionText}>Tìm đối</Text>
+            <Text style={styles.actionText}>Tìm đội</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -134,7 +167,6 @@ export default function HomeScreen({ navigation }) {
             <Ionicons name="football" size={40} color="#ef4444" />
             <Text style={styles.actionText}>Tạo kèo</Text>
           </TouchableOpacity>
-
         </View>
 
         {/* Match List */}
@@ -156,7 +188,7 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
             <Text style={styles.errorText}>Lỗi: {error}</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.retryButton}
               onPress={fetchMatches}
             >

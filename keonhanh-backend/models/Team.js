@@ -21,7 +21,7 @@ const teamSchema = new mongoose.Schema(
 
             type: mongoose.Schema.Types.ObjectId,
 
-            ref: "Users",
+            ref: "User",
 
             required: true
 
@@ -58,12 +58,12 @@ const teamSchema = new mongoose.Schema(
             type: String,
 
             enum: [
-                "Beginner",
-                "Intermediate",
-                "Advanced"
+                "Sơ cấp",
+                "Trung cấp",
+                "Chuyên nghiệp"
             ],
 
-            default: "Beginner"
+            default: "Sơ cấp"
 
         },
 

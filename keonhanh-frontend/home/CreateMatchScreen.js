@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../auth/AuthContext';
@@ -29,13 +30,50 @@ export default function CreateMatchScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  const parseDate = (ddmmyyyy) => {
-    // parse DD/MM/YYYY -> Date object
-    const parts = ddmmyyyy.trim().split('/');
-    if (parts.length !== 3) return null;
-    const [dd, mm, yyyy] = parts;
-    const date = new Date(`${yyyy}-${mm}-${dd}`);
-    return isNaN(date.getTime()) ? null : date;
+  const [dateObj, setDateObj] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState('date');
+
+  const showMode = (currentMode) => {
+    setShowPicker(true);
+    setPickerMode(currentMode);
+  };
+
+  const onDateChange = (event, selectedDate) => {
+    const currentDate = selectedDate || dateObj;
+    setShowPicker(Platform.OS === 'ios'); 
+    setDateObj(currentDate);
+    
+    const hh = currentDate.getHours().toString().padStart(2, '0');
+    const min = currentDate.getMinutes().toString().padStart(2, '0');
+    const dd = currentDate.getDate().toString().padStart(2, '0');
+    const mm = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+    const yyyy = currentDate.getFullYear();
+    
+    handleChange('playTime', `${hh}:${min} ${dd}/${mm}/${yyyy}`);
+  };
+
+  const parseDate = (inputStr) => {
+    // Support "DD/MM/YYYY" or "HH:mm DD/MM/YYYY"
+    const str = inputStr.trim();
+    if (str.includes(' ')) {
+      // "HH:mm DD/MM/YYYY"
+      const [timePart, datePart] = str.split(' ');
+      const [hh, min] = timePart.split(':');
+      const parts = datePart.split('/');
+      if (parts.length !== 3 || !hh || !min) return null;
+      const [dd, mm, yyyy] = parts;
+      const date = new Date(yyyy, mm - 1, dd, hh, min);
+      return isNaN(date.getTime()) ? null : date;
+    } else {
+      // "DD/MM/YYYY"
+      const parts = str.split('/');
+      if (parts.length !== 3) return null;
+      const [dd, mm, yyyy] = parts;
+      // Dùng cú pháp local để không bị lùi múi giờ
+      const date = new Date(yyyy, mm - 1, dd);
+      return isNaN(date.getTime()) ? null : date;
+    }
   };
 
   const validate = () => {
@@ -48,7 +86,7 @@ export default function CreateMatchScreen({ navigation }) {
     } else {
       const date = parseDate(form.playTime);
       if (!date) {
-        newErrors.playTime = 'Định dạng không hợp lệ. VD: 15/07/2025';
+        newErrors.playTime = 'Định dạng không hợp lệ. VD: 15/07/2025 hoặc 19:30 15/07/2025';
       } else if (date <= new Date()) {
         newErrors.playTime = 'Ngày thi đấu phải lớn hơn ngày hiện tại';
       }
@@ -188,18 +226,37 @@ export default function CreateMatchScreen({ navigation }) {
               <Text style={styles.label}>
                 <Ionicons name="time" size={14} color="#22c55e" /> Thời gian thi đấu
               </Text>
-              <TextInput
-                style={[styles.input, errors.playTime && styles.inputError]}
-                placeholder="VD: 15/07/2025"
-                placeholderTextColor="#aaa"
-                value={form.playTime}
-                onChangeText={(v) => handleChange('playTime', v)}
-                keyboardType="numeric"
-                autoCorrect={false}
-              />
-              <Text style={styles.hintText}>
-                Định dạng: DD/MM/YYYY
-              </Text>
+
+              <TouchableOpacity
+                style={[styles.input, { justifyContent: 'center' }, errors.playTime && styles.inputError]}
+                onPress={() => showMode('date')}
+              >
+                <Text style={{ color: form.playTime ? '#0f172a' : '#aaa' }}>
+                  {form.playTime || "Chạm để chọn Ngày/Giờ"}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                <TouchableOpacity onPress={() => showMode('date')} style={styles.pickBtn}>
+                  <Ionicons name="calendar-outline" size={16} color="white" />
+                  <Text style={styles.pickBtnText}>Chọn ngày</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => showMode('time')} style={styles.pickBtn}>
+                  <Ionicons name="time-outline" size={16} color="white" />
+                  <Text style={styles.pickBtnText}>Chọn giờ</Text>
+                </TouchableOpacity>
+              </View>
+
+              {showPicker && (
+                <DateTimePicker
+                  testID="dateTimePicker"
+                  value={dateObj}
+                  mode={pickerMode}
+                  is24Hour={true}
+                  display="default"
+                  onChange={onDateChange}
+                />
+              )}
               {errors.playTime ? (
                 <Text style={styles.errorText}>{errors.playTime}</Text>
               ) : null}
