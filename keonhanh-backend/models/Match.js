@@ -17,6 +17,14 @@ const MatchSchema = new mongoose.Schema({
     required: true,
   },
 
+  latitude: {
+    type: Number,
+  },
+
+  longitude: {
+    type: Number,
+  },
+
   playTime: {
     type: Date,
     required: true,

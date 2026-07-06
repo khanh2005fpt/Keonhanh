@@ -10,6 +10,7 @@ import {
   Text,
   TextInput,
   View,
+  ScrollView,
 } from "react-native";
 
 import { API_BASE_URL } from "../config/api";
@@ -61,56 +62,58 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.screen}
     >
-      <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-        <Text style={styles.backText}>← Quay lại</Text>
-      </Pressable>
-      <View style={styles.header}>
-        <Text style={styles.logo}>KeoNhanh</Text>
-        <Text style={styles.title}>Chào mừng</Text>
-        <Text style={styles.subtitle}>
-          Đăng nhập để tiếp tục tìm kèo bóng đá.
-        </Text>
-      </View>
-      <View style={styles.form}>
-        <Text style={styles.label}>Username</Text>
-        <TextInput
-          autoCapitalize="none"
-          autoCorrect={false}
-          onChangeText={setUsername}
-          placeholder="vd: messi10"
-          placeholderTextColor="#8b98a5"
-          style={styles.input}
-          value={username}
-        />
-        <Text style={styles.label}>Mật khẩu</Text>
-        <TextInput
-          onChangeText={setPassword}
-          placeholder="Tối thiểu 6 ký tự"
-          placeholderTextColor="#8b98a5"
-          secureTextEntry
-          style={styles.input}
-          value={password}
-        />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <Pressable
-          disabled={isSubmitting}
-          onPress={handleLogin}
-          style={({ pressed }) => [
-            styles.button,
-            pressed && styles.buttonPressed,
-            isSubmitting && styles.buttonDisabled,
-          ]}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text style={styles.buttonText}>Đăng nhập</Text>
-          )}
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text style={styles.backText}>← Quay lại</Text>
         </Pressable>
-      </View>
+        <View style={styles.header}>
+          <Text style={styles.logo}>KeoNhanh</Text>
+          <Text style={styles.title}>Chào mừng</Text>
+          <Text style={styles.subtitle}>
+            Đăng nhập để tiếp tục tìm kèo bóng đá.
+          </Text>
+        </View>
+        <View style={styles.form}>
+          <Text style={styles.label}>Username</Text>
+          <TextInput
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={setUsername}
+            placeholder="vd: messi10"
+            placeholderTextColor="#8b98a5"
+            style={styles.input}
+            value={username}
+          />
+          <Text style={styles.label}>Mật khẩu</Text>
+          <TextInput
+            onChangeText={setPassword}
+            placeholder="Tối thiểu 6 ký tự"
+            placeholderTextColor="#8b98a5"
+            secureTextEntry
+            style={styles.input}
+            value={password}
+          />
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <Pressable
+            disabled={isSubmitting}
+            onPress={handleLogin}
+            style={({ pressed }) => [
+              styles.button,
+              pressed && styles.buttonPressed,
+              isSubmitting && styles.buttonDisabled,
+            ]}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.buttonText}>Đăng nhập</Text>
+            )}
+          </Pressable>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -127,6 +130,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#f6f8f4",
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: 22,
   },

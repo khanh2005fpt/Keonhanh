@@ -67,31 +67,12 @@ const createTeam = async (req, res) => {
                 });
             }
 
-            // ✅ Kiểm tra xem cầu thủ nào đã có team chưa
-            const teamsWithPlayers = await Team.find({
-                players: { $in: allPlayerIds }
-            }).select("name players");
-
-            if (teamsWithPlayers.length > 0) {
-                // Thu thập các player đã có team
-                const takenPlayerIds = [];
-                teamsWithPlayers.forEach(team => {
-                    team.players.forEach(pid => {
-                        if (allPlayerIds.includes(pid.toString())) {
-                            takenPlayerIds.push(pid.toString());
-                        }
-                    });
-                });
-
-                // Lấy tên cầu thủ để thông báo rõ hơn
-                const takenProfiles = existingProfiles.filter(p =>
-                    takenPlayerIds.includes(p._id.toString())
-                );
-                const takenNames = takenProfiles.map(p => p.fullName).join(", ");
-
+            // ✅ Kiểm tra xem đội trưởng đã tạo/làm leader đội nào chưa
+            const existingLedTeam = await Team.findOne({ captainId });
+            if (existingLedTeam) {
                 return res.status(400).json({
                     success: false,
-                    message: `Các cầu thủ sau đã thuộc đội khác: ${takenNames}`
+                    message: "Bạn chỉ được phép tạo hoặc làm đội trưởng duy nhất 1 đội."
                 });
             }
         }
@@ -128,7 +109,7 @@ const getTeams = async (req, res) => {
     try {
         const teams = await Team.find()
             .populate("captainId", "username")
-            .populate("players", "fullName position avatar location");
+            .populate("players", "fullName position avatar location userId");
 
         return res.status(200).json({
             success: true,
@@ -153,7 +134,7 @@ const getTeamById = async (req, res) => {
 
         const team = await Team.findById(id)
             .populate("captainId", "username")
-            .populate("players", "fullName position avatar location phone");
+            .populate("players", "fullName position avatar location phone userId");
 
         if (!team) {
             return res.status(404).json({ success: false, message: "Không tìm thấy đội bóng." });
@@ -176,17 +157,17 @@ const getMyTeam = async (req, res) => {
         // Bước 1: Lấy thông tin Profile để có được userId (dùng làm fallback cho các team cũ)
         const profile = await UserProfile.findById(profileId);
 
-        console.log(`[getMyTeam] profileId nhận được từ App: ${profileId}`);
-        console.log(`[getMyTeam] userId tương ứng của profile: ${profile?.userId}`);
+    //    console.log(`[getMyTeam] profileId nhận được từ App: ${profileId}`);
+   //     console.log(`[getMyTeam] userId tương ứng của profile: ${profile?.userId}`);
 
         // Kiểm tra xem profileId của thằng đang đăng nhập CÓ CHỨA TRONG mảng players hay không
         const team = await Team.findOne({
             players: profileId
         })
             .populate("captainId", "username")
-            .populate("players", "fullName position avatar location phone");
+            .populate("players", "fullName position avatar location phone userId");
 
-        console.log(`[getMyTeam] Đội bóng tìm được: ${team ? team.name : 'Không có'}`);
+      //  console.log(`[getMyTeam] Đội bóng tìm được: ${team ? team.name : 'Không có'}`);
 
         if (!team) {
             return res.status(404).json({ success: false, message: "Bạn chưa gia nhập hoặc tạo đội bóng nào." });
@@ -214,14 +195,7 @@ const addPlayerToTeam = async (req, res) => {
             return res.status(404).json({ success: false, message: "Không tìm thấy cầu thủ." });
         }
 
-        // ✅ Kiểm tra cầu thủ đã có team chưa
-        const existingTeam = await Team.findOne({ players: playerProfileId }).select("name");
-        if (existingTeam) {
-            return res.status(400).json({
-                success: false,
-                message: `Cầu thủ "${profile.fullName}" đã thuộc đội "${existingTeam.name}".`
-            });
-        }
+
 
         const team = await Team.findById(id);
         if (!team) {
@@ -265,4 +239,66 @@ const deleteTeam = async (req, res) => {
     }
 };
 
-export { createTeam, getTeams, getTeamById, getMyTeam, addPlayerToTeam, deleteTeam };
+// PATCH /api/teams/:teamId/toggle-recruiting — Đội trưởng bật/tắt tuyển quân
+const TEAM_MAX_SIZE = 14;
+const TEAM_MIN_TO_CLOSE = 7;
+
+const toggleRecruiting = async (req, res) => {
+    try {
+        const { teamId } = req.params;
+        const { captainUserId } = req.body;
+
+        if (!mongoose.Types.ObjectId.isValid(teamId)) {
+            return res.status(400).json({ success: false, message: "ID đội không hợp lệ." });
+        }
+
+        const team = await Team.findById(teamId);
+        if (!team) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy đội bóng." });
+        }
+
+        // Kiểm tra quyền đội trưởng
+        if (team.captainId.toString() !== captainUserId) {
+            return res.status(403).json({ success: false, message: "Chỉ đội trưởng mới có thể thao tác này." });
+        }
+
+        const currentCount = team.players.length;
+
+        // Nếu đội đã đủ 14 người → khóa cứng, không cho thay đổi
+        if (currentCount >= TEAM_MAX_SIZE) {
+            team.isRecruiting = false;
+            team.recruitingStatus = "Full";
+            await team.save();
+            return res.status(400).json({
+                success: false,
+                message: `Đội đã đủ ${TEAM_MAX_SIZE} người, không thể mở tuyển thêm.`
+            });
+        }
+
+        // Muốn dừng tuyển thủ công: cần ít nhất 7 người
+        if (team.isRecruiting && currentCount < TEAM_MIN_TO_CLOSE) {
+            return res.status(400).json({
+                success: false,
+                message: `Cần có ít nhất ${TEAM_MIN_TO_CLOSE} người trước khi dừng tuyển (hiện tại: ${currentCount}).`
+            });
+        }
+
+        // Toggle
+        team.isRecruiting = !team.isRecruiting;
+        team.recruitingStatus = team.isRecruiting ? "Searching" : "Full";
+        await team.save();
+
+        return res.status(200).json({
+            success: true,
+            isRecruiting: team.isRecruiting,
+            message: team.isRecruiting
+                ? "Đã mở lại tuyển thành viên."
+                : "Đã dừng tuyển thành viên. Người khác sẽ không thể gửi yêu cầu gia nhập."
+        });
+
+    } catch (err) {
+        return res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+export { createTeam, getTeams, getTeamById, getMyTeam, addPlayerToTeam, deleteTeam, toggleRecruiting };

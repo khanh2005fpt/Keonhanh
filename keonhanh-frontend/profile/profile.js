@@ -26,7 +26,7 @@ export default function ProfileSetupScreen() {
     avatar: "",
     fullName: "",
     phone: "",
-    position: POSITIONS[0], 
+    position: POSITIONS[0],
     location: "",
     isLookingForTeam: true,
   });
@@ -165,7 +165,7 @@ export default function ProfileSetupScreen() {
   }, [userId]);
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.screen}
     >
       <ScrollView

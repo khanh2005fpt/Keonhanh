@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { useNavigation } from "@react-navigation/native";
+import { AuthContext } from "./AuthContext";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -9,11 +10,13 @@ import {
   Text,
   TextInput,
   View,
+  ScrollView,
 } from "react-native";
 
 import { API_BASE_URL } from "../config/api";
 
 export default function RegisterScreen() {
+  const { login } = useContext(AuthContext);
   const navigation = useNavigation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -45,6 +48,8 @@ export default function RegisterScreen() {
         throw new Error(data.message || "Đăng ký tài khoản thất bại");
       }
 
+      await login(data.user);
+
       setUsername("");
       setPassword("");
       navigation.replace("profile", {
@@ -60,60 +65,62 @@ export default function RegisterScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.screen}
     >
-      <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-        <Text style={styles.backText}>← Quay lại</Text>
-      </Pressable>
-      <View style={styles.header}>
-        <Text style={styles.logo}>KeoNhanh</Text>
-        <Text style={styles.title}>Đăng ký tài khoản</Text>
-        <Text style={styles.subtitle}>
-          Tạo tài khoản để bắt đầu tìm kèo bóng đá.
-        </Text>
-      </View>
-
-      <View style={styles.form}>
-        <Text style={styles.label}>Username</Text>
-        <TextInput
-          autoCapitalize="none"
-          autoCorrect={false}
-          onChangeText={setUsername}
-          placeholder="vd: messi10"
-          placeholderTextColor="#8b98a5"
-          style={styles.input}
-          value={username}
-        />
-
-        <Text style={styles.label}>Mật khẩu</Text>
-        <TextInput
-          onChangeText={setPassword}
-          placeholder="Tối thiểu 6 ký tự"
-          placeholderTextColor="#8b98a5"
-          secureTextEntry
-          style={styles.input}
-          value={password}
-        />
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <Pressable
-          disabled={isSubmitting}
-          onPress={handleRegister}
-          style={({ pressed }) => [
-            styles.button,
-            pressed && styles.buttonPressed,
-            isSubmitting && styles.buttonDisabled,
-          ]}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text style={styles.buttonText}>Tạo tài khoản</Text>
-          )}
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text style={styles.backText}>← Quay lại</Text>
         </Pressable>
-      </View>
+        <View style={styles.header}>
+          <Text style={styles.logo}>KeoNhanh</Text>
+          <Text style={styles.title}>Đăng ký tài khoản</Text>
+          <Text style={styles.subtitle}>
+            Tạo tài khoản để bắt đầu tìm kèo bóng đá.
+          </Text>
+        </View>
+
+        <View style={styles.form}>
+          <Text style={styles.label}>Username</Text>
+          <TextInput
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={setUsername}
+            placeholder="vd: messi10"
+            placeholderTextColor="#8b98a5"
+            style={styles.input}
+            value={username}
+          />
+
+          <Text style={styles.label}>Mật khẩu</Text>
+          <TextInput
+            onChangeText={setPassword}
+            placeholder="Tối thiểu 6 ký tự"
+            placeholderTextColor="#8b98a5"
+            secureTextEntry
+            style={styles.input}
+            value={password}
+          />
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <Pressable
+            disabled={isSubmitting}
+            onPress={handleRegister}
+            style={({ pressed }) => [
+              styles.button,
+              pressed && styles.buttonPressed,
+              isSubmitting && styles.buttonDisabled,
+            ]}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.buttonText}>Tạo tài khoản</Text>
+            )}
+          </Pressable>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -131,6 +138,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#f6f8f4",
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: 22,
   },
