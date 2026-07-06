@@ -67,31 +67,12 @@ const createTeam = async (req, res) => {
                 });
             }
 
-            // ✅ Kiểm tra xem cầu thủ nào đã có team chưa
-            const teamsWithPlayers = await Team.find({
-                players: { $in: allPlayerIds }
-            }).select("name players");
-
-            if (teamsWithPlayers.length > 0) {
-                // Thu thập các player đã có team
-                const takenPlayerIds = [];
-                teamsWithPlayers.forEach(team => {
-                    team.players.forEach(pid => {
-                        if (allPlayerIds.includes(pid.toString())) {
-                            takenPlayerIds.push(pid.toString());
-                        }
-                    });
-                });
-
-                // Lấy tên cầu thủ để thông báo rõ hơn
-                const takenProfiles = existingProfiles.filter(p =>
-                    takenPlayerIds.includes(p._id.toString())
-                );
-                const takenNames = takenProfiles.map(p => p.fullName).join(", ");
-
+            // ✅ Kiểm tra xem đội trưởng đã tạo/làm leader đội nào chưa
+            const existingLedTeam = await Team.findOne({ captainId });
+            if (existingLedTeam) {
                 return res.status(400).json({
                     success: false,
-                    message: `Các cầu thủ sau đã thuộc đội khác: ${takenNames}`
+                    message: "Bạn chỉ được phép tạo hoặc làm đội trưởng duy nhất 1 đội."
                 });
             }
         }
@@ -176,8 +157,8 @@ const getMyTeam = async (req, res) => {
         // Bước 1: Lấy thông tin Profile để có được userId (dùng làm fallback cho các team cũ)
         const profile = await UserProfile.findById(profileId);
 
-        console.log(`[getMyTeam] profileId nhận được từ App: ${profileId}`);
-        console.log(`[getMyTeam] userId tương ứng của profile: ${profile?.userId}`);
+    //    console.log(`[getMyTeam] profileId nhận được từ App: ${profileId}`);
+   //     console.log(`[getMyTeam] userId tương ứng của profile: ${profile?.userId}`);
 
         // Kiểm tra xem profileId của thằng đang đăng nhập CÓ CHỨA TRONG mảng players hay không
         const team = await Team.findOne({
@@ -186,7 +167,7 @@ const getMyTeam = async (req, res) => {
             .populate("captainId", "username")
             .populate("players", "fullName position avatar location phone userId");
 
-        console.log(`[getMyTeam] Đội bóng tìm được: ${team ? team.name : 'Không có'}`);
+      //  console.log(`[getMyTeam] Đội bóng tìm được: ${team ? team.name : 'Không có'}`);
 
         if (!team) {
             return res.status(404).json({ success: false, message: "Bạn chưa gia nhập hoặc tạo đội bóng nào." });
@@ -214,14 +195,7 @@ const addPlayerToTeam = async (req, res) => {
             return res.status(404).json({ success: false, message: "Không tìm thấy cầu thủ." });
         }
 
-        // ✅ Kiểm tra cầu thủ đã có team chưa
-        const existingTeam = await Team.findOne({ players: playerProfileId }).select("name");
-        if (existingTeam) {
-            return res.status(400).json({
-                success: false,
-                message: `Cầu thủ "${profile.fullName}" đã thuộc đội "${existingTeam.name}".`
-            });
-        }
+
 
         const team = await Team.findById(id);
         if (!team) {
