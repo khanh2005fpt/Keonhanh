@@ -21,7 +21,7 @@ export default function FindTeamScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [myProfileId, setMyProfileId] = useState(null);
-  const [myTeamId, setMyTeamId] = useState(null);
+  const [myTeamIds, setMyTeamIds] = useState([]);
   // Map teamId -> trạng thái request: 'none' | 'pending' | 'sending'
   const [requestStatus, setRequestStatus] = useState({});
 
@@ -57,7 +57,7 @@ export default function FindTeamScreen({ navigation }) {
   const fetchData = async () => {
     try {
       // 1. Lấy profile của user đang đăng nhập
-      const profileRes = await fetch(`${API_BASE_URL}/api/user-profiles/${user.id}`);
+      const profileRes = await fetch(`${API_BASE_URL}/api/user-profiles/${user._id || user.id}`);
       const profileData = await profileRes.json();
 
       let profileId = null;
@@ -66,14 +66,26 @@ export default function FindTeamScreen({ navigation }) {
         setMyProfileId(profileId);
       }
 
-      // 2. Kiểm tra user đã có đội chưa
+      // 2. Kiểm tra user đã có đội chưa và lấy các yêu cầu đã gửi
       if (profileId) {
         const myTeamRes = await fetch(`${API_BASE_URL}/api/teams/my-team/${profileId}`);
         const myTeamData = await myTeamRes.json();
-        if (myTeamRes.ok && myTeamData.success) {
-          setMyTeamId(myTeamData.data._id);
+        if (myTeamRes.ok && myTeamData.success && Array.isArray(myTeamData.data)) {
+          setMyTeamIds(myTeamData.data.map(t => t._id));
         } else {
-          setMyTeamId(null);
+          setMyTeamIds([]);
+        }
+        
+        // Fetch các yêu cầu xin vào đội đang chờ duyệt
+        const reqRes = await fetch(`${API_BASE_URL}/api/join-requests/player/${profileId}`);
+        const reqData = await reqRes.json();
+        if (reqRes.ok && reqData.success) {
+          const reqMap = {};
+          reqData.data.forEach(req => {
+            const tId = req.teamId?._id || req.teamId;
+            if (tId) reqMap[tId] = 'pending';
+          });
+          setRequestStatus(reqMap);
         }
       }
 
@@ -84,7 +96,7 @@ export default function FindTeamScreen({ navigation }) {
         setTeams(teamsData.data);
       }
     } catch (err) {
-      console.log('FindTeam fetch error:', err);
+     // console.log('FindTeam fetch error:', err);
       Alert.alert('Lỗi', 'Không thể kết nối tới server.');
     } finally {
       setLoading(false);
@@ -107,8 +119,8 @@ export default function FindTeamScreen({ navigation }) {
       return;
     }
 
-    if (myTeamId) {
-      Alert.alert('Đã có đội', 'Bạn đã thuộc một đội rồi. Hãy rời đội trước khi xin vào đội mới.');
+    if (myTeamIds.includes(team._id)) {
+      Alert.alert('Đã có đội', 'Bạn đã là thành viên của đội này rồi.');
       return;
     }
 
@@ -138,8 +150,8 @@ export default function FindTeamScreen({ navigation }) {
 
   const renderTeamCard = ({ item }) => {
     const status = requestStatus[item._id] || 'none';
-    const isMyCaptain = item.captainId?._id === user.id || item.captainId === user.id;
-    const isMember = myTeamId && item._id === myTeamId;
+    const isMyCaptain = item.captainId?._id === (user._id || user.id) || item.captainId === (user._id || user.id);
+    const isMember = myTeamIds.includes(item._id);
 
     let btnContent;
     if (isMember) {

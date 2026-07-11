@@ -157,23 +157,21 @@ const getMyTeam = async (req, res) => {
         // Bước 1: Lấy thông tin Profile để có được userId (dùng làm fallback cho các team cũ)
         const profile = await UserProfile.findById(profileId);
 
-    //    console.log(`[getMyTeam] profileId nhận được từ App: ${profileId}`);
-   //     console.log(`[getMyTeam] userId tương ứng của profile: ${profile?.userId}`);
+        //    console.log(`[getMyTeam] profileId nhận được từ App: ${profileId}`);
+        //     console.log(`[getMyTeam] userId tương ứng của profile: ${profile?.userId}`);
 
         // Kiểm tra xem profileId của thằng đang đăng nhập CÓ CHỨA TRONG mảng players hay không
-        const team = await Team.findOne({
+        const teams = await Team.find({
             players: profileId
         })
             .populate("captainId", "username")
             .populate("players", "fullName position avatar location phone userId");
 
-      //  console.log(`[getMyTeam] Đội bóng tìm được: ${team ? team.name : 'Không có'}`);
-
-        if (!team) {
+        if (!teams || teams.length === 0) {
             return res.status(404).json({ success: false, message: "Bạn chưa gia nhập hoặc tạo đội bóng nào." });
         }
 
-        return res.status(200).json({ success: true, data: team });
+        return res.status(200).json({ success: true, data: teams });
     } catch (err) {
         return res.status(500).json({ success: false, message: err.message });
     }
@@ -212,7 +210,7 @@ const addPlayerToTeam = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: `Đã thêm "${profile.fullName}" vào đội.`,
+            message: `Đã mời "${profile.fullName}" vào đội.`,
             data: team
         });
     } catch (err) {

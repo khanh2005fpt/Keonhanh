@@ -33,8 +33,9 @@ export default function ProfileSetupScreen() {
 
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const userId = route.params?.userId;
-  const username = route.params?.username;
+  const { user } = useContext(AuthContext);
+  const userId = route.params?.userId || user?._id || user?.id;
+  const username = route.params?.username || user?.username;
 
   const updateField = (field, value) => {
     setError(""); // Xóa thông báo lỗi khi người dùng bắt đầu nhập lại
@@ -183,7 +184,7 @@ export default function ProfileSetupScreen() {
               <Image source={{ uri: form.avatar }} style={styles.avatarImage} />
             ) : (
               <Text style={styles.avatarText}>
-                {username.slice(0, 2).toUpperCase()}
+                {username ? username.slice(0, 2).toUpperCase() : "U"}
               </Text>
             )}
           </View>

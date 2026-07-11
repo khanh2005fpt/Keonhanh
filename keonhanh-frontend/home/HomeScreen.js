@@ -64,11 +64,11 @@ export default function HomeScreen({ navigation }) {
             status: statusVN,
           };
         });
-        
+
         // Sort matches by newest first
         formatted.reverse();
         setMatches(formatted);
-     
+
       } else {
         setMatches([]);
       }
@@ -91,7 +91,7 @@ export default function HomeScreen({ navigation }) {
           {isLoggedIn ? (
             <TouchableOpacity
               style={styles.avatar}
-              onPress={() => navigation.navigate('profile', { userId: user?.id, username: user?.username })}
+              onPress={() => navigation.navigate('profile', { userId: user?._id || user?.id, username: user?.username })}
             >
               <Ionicons name="person" size={24} color="white" />
             </TouchableOpacity>
@@ -255,8 +255,8 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f4f4f4',
-    paddingHorizontal: 16,
+    backgroundColor: '#f4fdf4',
+    paddingHorizontal: 20,
     paddingTop: 50,
   },
 
@@ -269,12 +269,14 @@ const styles = StyleSheet.create({
 
   hello: {
     fontSize: 16,
-    color: '#666',
+    color: '#166534',
+    fontWeight: '600',
   },
 
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '900',
+    color: '#14532d',
     marginTop: 4,
   },
 
@@ -282,30 +284,39 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#22c55e',
+    backgroundColor: '#16a34a',
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 3,
+    borderWidth: 2,
+    borderColor: '#dcfce7',
   },
 
   banner: {
-    backgroundColor: '#22c55e',
-    borderRadius: 20,
+    backgroundColor: '#16a34a',
+    borderRadius: 24,
     padding: 24,
-    marginBottom: 24,
+    marginBottom: 30,
+    elevation: 8,
+    shadowColor: '#14532d',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
   },
 
   bannerTitle: {
     color: 'white',
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '900',
     marginBottom: 10,
   },
 
   bannerText: {
-    color: 'white',
+    color: '#dcfce7',
     fontSize: 15,
     lineHeight: 22,
     marginBottom: 20,
+    fontWeight: '500',
   },
 
   bannerButton: {
@@ -314,16 +325,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
 
   bannerButtonText: {
-    color: '#22c55e',
-    fontWeight: 'bold',
+    color: '#16a34a',
+    fontWeight: '800',
+    fontSize: 15,
   },
 
   sectionTitle: {
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: '900',
+    color: '#14532d',
     marginBottom: 16,
   },
 
@@ -331,40 +349,58 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 28,
-    gap: 12,
+    marginBottom: 32,
+    gap: 16,
   },
 
   actionCard: {
     width: '47%',
     backgroundColor: 'white',
-    borderRadius: 18,
-    paddingVertical: 22,
+    borderRadius: 24,
+    paddingVertical: 24,
     alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    borderWidth: 1,
+    borderColor: '#dcfce7',
   },
 
   actionText: {
-    marginTop: 10,
-    fontWeight: '600',
+    marginTop: 12,
+    fontWeight: '800',
+    color: '#14532d',
+    fontSize: 15,
   },
 
   matchCard: {
     backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 18,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 20,
+    elevation: 4,
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    borderWidth: 1,
+    borderColor: '#dcfce7',
   },
 
   matchHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
 
   teamName: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '900',
+    color: '#14532d',
+    flex: 1,
   },
 
   badge: {
@@ -372,11 +408,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
+    marginLeft: 10,
   },
 
   badgeText: {
     color: '#16a34a',
-    fontWeight: 'bold',
+    fontWeight: '800',
     fontSize: 12,
   },
 
@@ -387,22 +424,30 @@ const styles = StyleSheet.create({
   },
 
   infoText: {
-    marginLeft: 8,
-    color: '#555',
+    marginLeft: 10,
+    color: '#166534',
+    fontWeight: '600',
+    fontSize: 14,
   },
 
   joinButton: {
-    backgroundColor: '#22c55e',
+    backgroundColor: '#16a34a',
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 16,
+    elevation: 3,
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
 
   joinButtonText: {
     color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontWeight: '800',
+    fontSize: 15,
+    letterSpacing: 0.5,
   },
 
   sectionHeader: {
@@ -415,87 +460,100 @@ const styles = StyleSheet.create({
   loadingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 60,
   },
 
   loadingText: {
-    marginTop: 12,
+    marginTop: 16,
     fontSize: 16,
-    color: '#666',
+    color: '#16a34a',
+    fontWeight: '700',
   },
 
   errorContainer: {
-    backgroundColor: '#fee2e2',
-    borderRadius: 12,
-    padding: 20,
+    backgroundColor: '#fef2f2',
+    borderRadius: 16,
+    padding: 24,
     alignItems: 'center',
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#fee2e2',
   },
 
   errorText: {
     color: '#dc2626',
     marginTop: 12,
-    fontSize: 14,
+    fontSize: 15,
     textAlign: 'center',
+    fontWeight: '600',
   },
 
   retryButton: {
     backgroundColor: '#ef4444',
     paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginTop: 12,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 16,
+    elevation: 2,
   },
 
   retryButtonText: {
     color: 'white',
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
 
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 60,
+    backgroundColor: 'white',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#dcfce7',
   },
 
   emptyText: {
-    marginTop: 12,
+    marginTop: 16,
     fontSize: 16,
-    color: '#999',
+    color: '#16a34a',
+    fontWeight: '700',
   },
 
   authButtons: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
 
   loginBtn: {
-    backgroundColor: '#22c55e',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: '#16a34a',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 2,
   },
 
   loginBtnText: {
     color: 'white',
-    fontWeight: 'bold',
+    fontWeight: '800',
     fontSize: 14,
   },
 
   registerBtn: {
-    backgroundColor: '#3b82f6',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#4ade80',
   },
 
   registerBtnText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: '#16a34a',
+    fontWeight: '800',
     fontSize: 14,
   },
 });

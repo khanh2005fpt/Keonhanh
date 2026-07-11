@@ -25,7 +25,7 @@ const SKILL_LABELS = { 'Sơ cấp': 'Sơ cấp', 'Trung cấp': 'Trung cấp', '
 const SKILL_COLORS = { 'Sơ cấp': '#22c55e', 'Trung cấp': '#f59e0b', 'Chuyên nghiệp': '#ef4444' };
 
 export default function CreateTeamScreen({ navigation }) {
-  const { user } = useContext(AuthContext);
+  const { user, updateUser } = useContext(AuthContext);
 
   const [form, setForm] = useState({
     name: '',
@@ -79,47 +79,87 @@ export default function CreateTeamScreen({ navigation }) {
     const newErrors = {};
     if (!form.name.trim()) newErrors.name = 'Vui lòng nhập tên đội';
     if (!form.location.trim()) newErrors.location = 'Vui lòng nhập địa điểm';
-    if (!user?.id) newErrors.captain = 'Bạn phải đăng nhập để tạo đội';
+    if (!user || !user._id) {
+      newErrors.captain = "Bạn phải đăng nhập để tạo đội";
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleCreateTeam = async () => {
-    if (!validate()) return;
+ const handleCreateTeam = async () => {
+  if (!validate()) return;
 
-    let res, data;
-    try {
-      setLoading(true);
-      res = await fetch(`${API_BASE_URL}/api/teams`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name.trim(),
-          logo: form.logo.trim(),
-          captainId: user.id,
-          location: form.location.trim(),
-          skillLevel: form.skillLevel,
-          isRecruiting: form.isRecruiting,
-          players: [],
-        }),
-      });
-      data = await res.json();
-    } catch {
-      Alert.alert('❌ Lỗi kết nối', 'Không thể kết nối đến server. Kiểm tra lại mạng!');
-      setLoading(false);
+  setLoading(true);
+
+  try {
+    // Hỗ trợ cả id và _id
+    const captainId = user?._id;
+
+    // console.log("USER:", user);
+
+    // console.log("REQUEST BODY:", {
+    //   name: form.name.trim(),
+    //   logo: form.logo,
+    //   captainId,
+    //   location: form.location.trim(),
+    //   skillLevel: form.skillLevel,
+    //   isRecruiting: form.isRecruiting,
+    //   players: [],
+    // });
+
+    const res = await fetch(`${API_BASE_URL}/api/teams`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: form.name.trim(),
+        logo: form.logo,
+        captainId,
+        location: form.location.trim(),
+        skillLevel: form.skillLevel,
+        isRecruiting: form.isRecruiting,
+        players: [],
+      }),
+    });
+
+    const data = await res.json();
+
+    // console.log("STATUS:", res.status);
+    // console.log("RESPONSE:", data);
+
+    if (!res.ok) {
+      Alert.alert("Lỗi", data.message || "Không thể tạo đội.");
       return;
     }
 
-    setLoading(false);
+    if (data.success) {
+      // Cập nhật teamId vào AuthContext để các màn hình khác biết user đã có đội
+      const newTeamId = data.data?._id;
+      if (newTeamId) {
+        await updateUser({ teamId: newTeamId });
+      }
 
-    if (res.ok && data.success) {
-      Alert.alert('🎉 Thành công', 'Tạo đội bóng thành công!', [
-        { text: 'OK', onPress: () => navigation.goBack() },
+      Alert.alert("Thành công", "Tạo đội thành công!", [
+        {
+          text: "OK",
+          onPress: () => navigation.goBack(),
+        },
       ]);
     } else {
-      Alert.alert('❌ Lỗi', data.message || 'Không thể tạo đội. Thử lại!');
+      Alert.alert("Lỗi", data.message);
     }
-  };
+  } catch (err) {
+    //console.log("CREATE TEAM ERROR:", err);
+
+    Alert.alert(
+      "Lỗi kết nối",
+      "Không thể kết nối tới server."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <SafeAreaView style={styles.container}>
@@ -129,10 +169,15 @@ export default function CreateTeamScreen({ navigation }) {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={22} color="#22c55e" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Tạo đội bóng 🛡️</Text>
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={22} color="#16a34a" />
+            </TouchableOpacity>
+            <View style={styles.headerTextWrap}>
+              <Text style={styles.hello}>Gia Nhập Làng Bóng 🌟</Text>
+              <Text style={styles.headerTitle}>Tạo Đội Mới</Text>
+            </View>
+          </View>
           <View style={{ width: 40 }} />
         </View>
 
@@ -329,54 +374,39 @@ export default function CreateTeamScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f4f4f4',
-  },
+  container: { flex: 1, backgroundColor: '#f4fdf4' },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 24,
+    backgroundColor: '#16a34a',
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    elevation: 8,
+    shadowColor: '#14532d',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
   },
 
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#dcfce7',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center', elevation: 2, marginRight: 12 },
+  headerTextWrap: { justifyContent: 'center' },
+  hello: { fontSize: 13, color: '#dcfce7', fontWeight: '600', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: 'white' },
 
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111',
-  },
-
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 48,
-  },
+  scrollContent: { padding: 16, paddingTop: 24, paddingBottom: 48 },
 
   // Hero
   heroCard: {
     backgroundColor: '#16a34a',
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 24,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
     elevation: 4,
     shadowColor: '#16a34a',
     shadowOffset: { width: 0, height: 4 },

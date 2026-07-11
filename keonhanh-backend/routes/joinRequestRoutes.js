@@ -2,6 +2,7 @@ import express from "express";
 import {
     sendJoinRequest,
     getRequestsForCaptain,
+    getRequestsForPlayer,
     approveJoinRequest,
     rejectJoinRequest,
 } from "../controllers/joinRequestControllers.js";
@@ -13,6 +14,9 @@ router.post("/", sendJoinRequest);
 
 // Đội trưởng lấy danh sách yêu cầu pending của đội mình
 router.get("/captain/:captainUserId", getRequestsForCaptain);
+
+// Cầu thủ lấy danh sách yêu cầu pending của mình
+router.get("/player/:profileId", getRequestsForPlayer);
 
 // Phê duyệt yêu cầu
 router.patch("/:id/approve", approveJoinRequest);

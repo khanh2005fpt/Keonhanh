@@ -10,6 +10,7 @@ import profileRoutes from "./routes/profileRoutes.js";
 import matchRoutes from "./routes/matchRoutes.js"
 import teamRoutes from "./routes/teamRoutes.js"
 import joinRequestRoutes from "./routes/joinRequestRoutes.js"
+import invitationRoutes from "./routes/invitationRoutes.js";
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
@@ -22,6 +23,7 @@ app.use("/api/user-profiles", profileRoutes);
 app.use("/api/matches", matchRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/join-requests", joinRequestRoutes);
+app.use("/api/invitations", invitationRoutes);
 
 const PORT = process.env.PORT || 9999;
 const MONGOURL = process.env.MONGO_URL;

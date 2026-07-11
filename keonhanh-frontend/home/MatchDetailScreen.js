@@ -16,8 +16,9 @@ export default function MatchDetailScreen({ route, navigation }) {
 
   useEffect(() => {
     fetchMatchDetails();
-    if (user?.id) {
-      fetchMyTeam();
+    const currentUserId = user?.id || user?._id;
+    if (currentUserId) {
+      fetchMyTeam(currentUserId);
     }
   }, [matchId, user]);
 
@@ -37,9 +38,9 @@ export default function MatchDetailScreen({ route, navigation }) {
     }
   };
 
-  const fetchMyTeam = async () => {
+  const fetchMyTeam = async (userId) => {
     try {
-      const profileRes = await fetch(`${API_BASE_URL}/api/user-profiles/${user.id}`);
+      const profileRes = await fetch(`${API_BASE_URL}/api/user-profiles/${userId}`);
       const profileData = await profileRes.json();
       if (profileRes.ok && profileData.profile) {
         const teamRes = await fetch(`${API_BASE_URL}/api/teams/my-team/${profileData.profile._id}`);
@@ -59,14 +60,16 @@ export default function MatchDetailScreen({ route, navigation }) {
       return;
     }
 
-    const captainId = myTeam.captainId?._id || myTeam.captainId;
+    const currentUserId = user?.id || user?._id;
+    const myTeams = Array.isArray(myTeam) ? myTeam : [myTeam];
+    const ledTeam = myTeams.find(t => t && (t.captainId?._id === currentUserId || t.captainId === currentUserId));
 
-    if (captainId !== user.id) {
+    if (!ledTeam) {
       Alert.alert('Lỗi', 'Chỉ đội trưởng mới có quyền bắt kèo với đội khác.');
       return;
     }
 
-    if (match.creatorTeamId?._id === myTeam._id) {
+    if (match.creatorTeamId?._id === ledTeam._id) {
       Alert.alert('Lỗi', 'Bạn không thể bắt kèo của chính đội mình.');
       return;
     }
@@ -84,7 +87,7 @@ export default function MatchDetailScreen({ route, navigation }) {
               const res = await fetch(`${API_BASE_URL}/api/matches/${matchId}/match`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ matchedWithTeamId: myTeam._id, userId: user.id }),
+                body: JSON.stringify({ matchedWithTeamId: ledTeam._id, userId: currentUserId }),
               });
               const data = await res.json();
               if (res.ok) {
@@ -107,9 +110,11 @@ export default function MatchDetailScreen({ route, navigation }) {
   const handleCancelMatch = async () => {
     if (!myTeam) return;
 
-    const captainId = myTeam.captainId?._id || myTeam.captainId;
+    const currentUserId = user?.id || user?._id;
+    const myTeams = Array.isArray(myTeam) ? myTeam : [myTeam];
+    const ledTeam = myTeams.find(t => t && (t.captainId?._id === currentUserId || t.captainId === currentUserId));
 
-    if (captainId !== user.id) {
+    if (!ledTeam) {
       Alert.alert('Lỗi', 'Chỉ đội trưởng mới có quyền hủy kèo.');
       return;
     }
@@ -128,7 +133,7 @@ export default function MatchDetailScreen({ route, navigation }) {
               const res = await fetch(`${API_BASE_URL}/api/matches/${matchId}/cancel`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id }),
+                body: JSON.stringify({ userId: currentUserId }),
               });
               const data = await res.json();
               if (res.ok) {
@@ -136,6 +141,50 @@ export default function MatchDetailScreen({ route, navigation }) {
                 fetchMatchDetails();
               } else {
                 Alert.alert('Lỗi', data.message || 'Không thể hủy kèo.');
+              }
+            } catch (err) {
+              Alert.alert('Lỗi', 'Lỗi kết nối.');
+            } finally {
+              setProcessing(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteMatch = () => {
+    Alert.alert(
+      'Xác nhận xóa kèo',
+      'Bạn có chắc chắn muốn xóa kèo đấu này không? Hành động này không thể hoàn tác.',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            setProcessing(true);
+            const currentUserId = user?.id || user?._id;
+            const myTeams = Array.isArray(myTeam) ? myTeam : [myTeam];
+            const ledTeam = myTeams.find(t => t && (t.captainId?._id === currentUserId || t.captainId === currentUserId));
+
+            if (!ledTeam) {
+              Alert.alert('Lỗi', 'Chỉ đội trưởng mới có quyền xóa kèo.');
+              return;
+            }
+
+            try {
+              const res = await fetch(`${API_BASE_URL}/api/matches/${matchId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUserId }),
+              });
+              if (res.ok) {
+                Alert.alert('Thành công', 'Đã xóa kèo đấu!');
+                navigation.goBack();
+              } else {
+                const data = await res.json();
+                Alert.alert('Lỗi', data.message || 'Không thể xóa kèo.');
               }
             } catch (err) {
               Alert.alert('Lỗi', 'Lỗi kết nối.');
@@ -165,8 +214,15 @@ export default function MatchDetailScreen({ route, navigation }) {
   const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   const dateStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
 
-  const isMyTeamMatched = myTeam && match.matchedWithTeamId?._id === myTeam._id;
-  const isMyTeamCreator = myTeam && match.creatorTeamId?._id === myTeam._id;
+  const myTeamsArray = Array.isArray(myTeam) ? myTeam : (myTeam ? [myTeam] : []);
+  const currentUserId = user?.id || user?._id;
+  
+  const isMyTeamMatched = myTeamsArray.some(t => t._id === match.matchedWithTeamId?._id);
+  const isMyTeamCreator = myTeamsArray.some(t => t._id === match.creatorTeamId?._id);
+  
+  const isCaptainOfMatchedTeam = myTeamsArray.some(t => t._id === match.matchedWithTeamId?._id && (t.captainId?._id === currentUserId || t.captainId === currentUserId));
+  const isCaptainOfCreatorTeam = myTeamsArray.some(t => t._id === match.creatorTeamId?._id && (t.captainId?._id === currentUserId || t.captainId === currentUserId));
+  const isCaptainOfAnyTeam = myTeamsArray.some(t => t.captainId?._id === currentUserId || t.captainId === currentUserId);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -263,7 +319,7 @@ export default function MatchDetailScreen({ route, navigation }) {
               <Text style={styles.infoValue}>{match.fieldName}</Text>
             </View>
           </View>
-          
+
           {match.latitude && match.longitude && (
             <View style={{ marginTop: 16, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0' }}>
               <MapView
@@ -277,12 +333,12 @@ export default function MatchDetailScreen({ route, navigation }) {
                 scrollEnabled={false}
                 zoomEnabled={false}
               >
-                <Marker 
-                  coordinate={{ latitude: match.latitude, longitude: match.longitude }} 
+                <Marker
+                  coordinate={{ latitude: match.latitude, longitude: match.longitude }}
                   title={match.fieldName}
                 />
               </MapView>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={{ position: 'absolute', bottom: 8, right: 8, backgroundColor: 'white', padding: 8, borderRadius: 8, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2 }}
                 onPress={() => {
                   const url = `https://www.google.com/maps/search/?api=1&query=${match.latitude},${match.longitude}`;
@@ -297,7 +353,7 @@ export default function MatchDetailScreen({ route, navigation }) {
 
         {/* Action Buttons */}
         <View style={styles.actionContainer}>
-          {match.status === 'open' && !isMyTeamCreator && (
+          {match.status === 'open' && !isMyTeamCreator && isCaptainOfAnyTeam && (
             <TouchableOpacity
               style={[styles.matchBtn, processing && { opacity: 0.7 }]}
               onPress={handleMatch}
@@ -318,13 +374,25 @@ export default function MatchDetailScreen({ route, navigation }) {
           )}
 
           {match.status === 'open' && isMyTeamCreator && (
-            <View style={styles.waitingBox}>
-              <ActivityIndicator size="small" color="#22c55e" style={{ marginRight: 10 }} />
-              <Text style={styles.waitingText}>Đang chờ đối thủ nhận kèo...</Text>
+            <View style={{ gap: 12 }}>
+              <View style={styles.waitingBox}>
+                <ActivityIndicator size="small" color="#22c55e" style={{ marginRight: 10 }} />
+                <Text style={styles.waitingText}>Đang chờ đối thủ nhận kèo...</Text>
+              </View>
+              {isCaptainOfCreatorTeam && (
+                <TouchableOpacity
+                  style={[styles.cancelBtn, processing && { opacity: 0.7 }]}
+                  onPress={handleDeleteMatch}
+                  disabled={processing}
+                  activeOpacity={0.8}
+                >
+                  {processing ? <ActivityIndicator color="#ef4444" /> : <Text style={styles.cancelBtnText}>Xóa Kèo</Text>}
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
-          {match.status === 'matched' && (isMyTeamCreator || isMyTeamMatched) && (
+          {match.status === 'matched' && (isCaptainOfCreatorTeam || isCaptainOfMatchedTeam) && (
             <TouchableOpacity
               style={[styles.cancelBtn, processing && { opacity: 0.7 }]}
               onPress={handleCancelMatch}

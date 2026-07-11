@@ -4,9 +4,9 @@ import {
     getTeams,
     getTeamById,
     getMyTeam,
-    addPlayerToTeam,
     deleteTeam,
     toggleRecruiting,
+    addPlayerToTeam,
 } from "../controllers/teamControllers.js";
 import { kickPlayer } from "../controllers/joinRequestControllers.js";
 
