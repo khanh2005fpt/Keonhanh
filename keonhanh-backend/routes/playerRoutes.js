@@ -4,13 +4,6 @@ import Team from "../models/Team.js";
 
 const router = express.Router();
 
-/*
-GET /api/players
-Lấy danh sách cầu thủ
-*/
-
-
-
 router.get("/", async (req, res) => {
   try {
     const teams = await Team.find();
@@ -40,6 +33,5 @@ router.get("/", async (req, res) => {
     });
   }
 });
-
 
 export default router;

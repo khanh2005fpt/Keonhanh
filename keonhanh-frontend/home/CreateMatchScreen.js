@@ -231,7 +231,7 @@ export default function CreateMatchScreen({ navigation }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
+          userId: user?.id || user?._id,
           location: form.location.trim(),
           fieldName: form.fieldName.trim(),
           playTime: parseDate(form.playTime).toISOString(),

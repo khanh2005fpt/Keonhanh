@@ -2,6 +2,7 @@ import 'react-native-gesture-handler';
 import React, { useContext } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import HomeScreen from './home/HomeScreen';
@@ -15,36 +16,64 @@ import MatchScreen from './home/MatchScreen';
 // import ProfileScreen from './home/ProfileScreen';
 import MatchDetailScreen from './home/MatchDetailScreen';
 import AllMatchesScreen from './home/AllMatchesScreen';
+
 import RegisterScreen from "./auth/register";
 import LoginScreen from "./auth/login";
 import ProfileSetupScreen from "./profile/profile";
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
 import { AuthContext, AuthProvider } from './auth/AuthContext';
+
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+
 export default function App() {
   return (
     <AuthProvider>
       <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {/* app chính */}
-          <Stack.Screen name="main" component={MainTabs} />
-          {/* màn hình đăng ký */}
-          <Stack.Screen name="register" component={RegisterScreen} />
-          <Stack.Screen name="login" component={LoginScreen} />
-          <Stack.Screen name="profile" component={ProfileSetupScreen} />
-          <Stack.Screen name="createMatch" component={CreateMatchScreen} />
-          <Stack.Screen name="matchDetail" component={MatchDetailScreen} />
-          <Stack.Screen name="createTeam" component={CreateTeamScreen} />
-          <Stack.Screen name="myTeam" component={MyTeamScreen} />
-          <Stack.Screen name="allMatches" component={AllMatchesScreen} />
-          <Stack.Screen name="findTeam" component={FindTeamScreen} />
-        </Stack.Navigator>
+
+        <RootNavigator />
       </NavigationContainer>
     </AuthProvider>
   );
 }
 
+// =======================
+// ROOT NAVIGATOR (FIX AUTH)
+// =======================
+function RootNavigator() {
+  const { user, loading } = useContext(AuthContext);
+
+  // 🔥 CHẶN LOAD TRƯỚC KHI RESTORE AUTH
+  if (loading) return null;
+
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {/* APP CHÍNH */}
+      <Stack.Screen name="main" component={MainTabs} />
+
+      {/* AUTH */}
+      {!user && (
+        <>
+          <Stack.Screen name="register" component={RegisterScreen} />
+          <Stack.Screen name="login" component={LoginScreen} />
+        </>
+      )}
+
+      {/* EXTRA SCREENS */}
+      <Stack.Screen name="profile" component={ProfileSetupScreen} />
+      <Stack.Screen name="createMatch" component={CreateMatchScreen} />
+      <Stack.Screen name="matchDetail" component={MatchDetailScreen} />
+      <Stack.Screen name="createTeam" component={CreateTeamScreen} />
+      <Stack.Screen name="myTeam" component={MyTeamScreen} />
+      <Stack.Screen name="allMatches" component={AllMatchesScreen} />
+      <Stack.Screen name="findTeam" component={FindTeamScreen} />
+    </Stack.Navigator>
+  );
+}
+
+// =======================
+// TAB NAVIGATOR
+// =======================
 function MainTabs() {
   const { user } = useContext(AuthContext);
 

@@ -17,26 +17,32 @@ import { API_BASE_URL } from '../config/api';
 import { AuthContext } from '../auth/AuthContext';
 
 export default function MyTeamScreen({ navigation }) {
-  const { user } = useContext(AuthContext);
-  const [team, setTeam] = useState(null);
+  const { user, updateUser } = useContext(AuthContext);
+  const [teams, setTeams] = useState([]);
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const team = selectedTeamId ? teams.find(t => t._id === selectedTeamId) : null;
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [myProfileId, setMyProfileId] = useState(null);
   // Danh sách yêu cầu gia nhập (chỉ đội trưởng thấy)
   const [joinRequests, setJoinRequests] = useState([]);
   const [processingId, setProcessingId] = useState(null); // request đang xử lý
+  const [processingAction, setProcessingAction] = useState(null); // 'approve' hoặc 'reject'
   const [kickingId, setKickingId] = useState(null); // player đang bị kick
   const [togglingRecruiting, setTogglingRecruiting] = useState(false); // đang toggle trạng thái tuyển quân
+  const [invitations, setInvitations] = useState([]);
+  const [sentRequests, setSentRequests] = useState([]);
 
   const fetchMyTeam = async () => {
-    if (!user?.id) return;
+    const userId = user?.id || user?._id;
+    if (!userId) return;
+
     try {
-      // 1. Lấy profileId của tài khoản đang đăng nhập
-      const profileRes = await fetch(`${API_BASE_URL}/api/user-profiles/${user.id}`);
+      const profileRes = await fetch(`${API_BASE_URL}/api/user-profiles/${userId}`);
       const profileData = await profileRes.json();
 
       if (!profileRes.ok || !profileData.profile) {
-        setTeam(null);
+        setTeams([]);
         setLoading(false);
         setRefreshing(false);
         Alert.alert('Lỗi Profile', profileData.message || 'Chưa thể lấy thông tin cá nhân.');
@@ -49,23 +55,27 @@ export default function MyTeamScreen({ navigation }) {
       // 2. Lấy đội bóng theo đúng profileId
       const res = await fetch(`${API_BASE_URL}/api/teams/my-team/${profileId}`);
       const data = await res.json();
+
+      //console.log("TEAM DATA:", data);
+
       if (res.ok && data.success) {
-        setTeam(data.data);
+        setTeams(data.data);
+        
+        const currentTeam = selectedTeamId ? data.data.find(t => t._id === selectedTeamId) : null;
 
-        // 3. Nếu user là đội trưởng → lấy danh sách yêu cầu gia nhập
-        const isCaptain =
-          data.data.captainId?._id === user.id ||
-          data.data.captainId === user.id;
+        // 3. Nếu user là đội trưởng của bất kỳ đội nào → lấy danh sách yêu cầu gia nhập
+        const isCaptainOfAny = data.data.some(t => t.captainId?._id === userId || t.captainId === userId);
 
-        if (isCaptain) {
+        if (isCaptainOfAny) {
           await fetchJoinRequests();
         }
       } else {
-        setTeam(null);
+        setTeams([]);
+        await fetchSentRequests(profileId);
       }
-    } catch (error) {
-      console.log('Lỗi fetch team:', error);
-      Alert.alert('Lỗi', 'Không thể kết nối tới server.');
+
+    } catch (err) {
+      Alert.alert("Lỗi", err.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -75,7 +85,7 @@ export default function MyTeamScreen({ navigation }) {
 
   const fetchJoinRequests = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/join-requests/captain/${user.id}`);
+      const res = await fetch(`${API_BASE_URL}/api/join-requests/captain/${user?._id || user?.id}`);
       const data = await res.json();
       if (res.ok && data.success) {
         setJoinRequests(data.data);
@@ -87,20 +97,130 @@ export default function MyTeamScreen({ navigation }) {
     }
   };
 
+  const fetchSentRequests = async (profileId) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/join-requests/player/${profileId}`);
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSentRequests(data.data);
+      } else {
+        setSentRequests([]);
+      }
+    } catch (err) {
+      console.log('Lỗi fetch sent requests:', err);
+    }
+  };
+
+  const fetchInvitations = async () => {
+    if (!user?.token) {
+      setInvitations([]);
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/invitations/me`,
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+      //console.log("INVITATIONS:", data);
+
+      if (data.success) {
+        setInvitations(data.data || []);
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const handleAccept = async (id) => {
+    try {
+      setProcessingId(id);
+      setProcessingAction('approve');
+
+      const res = await fetch(
+        `${API_BASE_URL}/api/invitations/${id}/accept`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      if (!data.success) {
+        Alert.alert("Lỗi", data.message);
+        return;
+      }
+
+      Alert.alert("Thành công", "Bạn đã tham gia đội.");
+
+      await fetchInvitations();
+
+      await fetchMyTeam();
+
+    } catch (err) {
+      Alert.alert("Lỗi", err.message);
+    } finally {
+      setProcessingId(null);
+      setProcessingAction(null);
+    }
+  };
+
+  const handleRejectInvitation = async (id) => {
+    try {
+      setProcessingId(id);
+      setProcessingAction('reject');
+
+      const res = await fetch(
+        `${API_BASE_URL}/api/invitations/${id}/reject`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      if (data.success) {
+        await fetchInvitations();
+      } else {
+        Alert.alert("Lỗi", data.message);
+      }
+    } catch (err) {
+      Alert.alert("Lỗi", err.message);
+    } finally {
+      setProcessingId(null);
+    }
+  };
   useFocusEffect(
     useCallback(() => {
       fetchMyTeam();
+      fetchInvitations();
+
     }, [user])
   );
+
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchMyTeam();
+    fetchInvitations();
   };
 
   // Đội trưởng phê duyệt
   const handleApprove = async (requestId) => {
     setProcessingId(requestId);
+    setProcessingAction('approve');
     try {
       const res = await fetch(`${API_BASE_URL}/api/join-requests/${requestId}/approve`, {
         method: 'PATCH',
@@ -122,8 +242,9 @@ export default function MyTeamScreen({ navigation }) {
   };
 
   // Đội trưởng từ chối
-  const handleReject = async (requestId) => {
+  const handleRejectRequest = async (requestId) => {
     setProcessingId(requestId);
+    setProcessingAction('reject');
     try {
       const res = await fetch(`${API_BASE_URL}/api/join-requests/${requestId}/reject`, {
         method: 'PATCH',
@@ -162,7 +283,7 @@ export default function MyTeamScreen({ navigation }) {
               const res = await fetch(`${API_BASE_URL}/api/teams/${team._id}/toggle-recruiting`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ captainUserId: user.id }),
+                body: JSON.stringify({ captainUserId: user._id || user.id }),
               });
               const data = await res.json();
               if (res.ok && data.success) {
@@ -226,24 +347,30 @@ export default function MyTeamScreen({ navigation }) {
     );
   }
 
+  const currentUserId = user?.id || user?._id;
   const isCaptain =
-    team &&
-    (team.captainId?._id === user?.id || team.captainId === user?.id);
+    team && currentUserId &&
+    (team.captainId?._id === currentUserId || team.captainId === currentUserId);
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color="#22c55e" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Đội bóng của tôi</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={22} color="#16a34a" />
+          </TouchableOpacity>
+          <View style={styles.headerTextWrap}>
+            <Text style={styles.hello}>Quản Lý 🛡️</Text>
+            <Text style={styles.headerTitle}>Đội Của Tôi</Text>
+          </View>
+        </View>
         {/* Badge yêu cầu gia nhập */}
-        {isCaptain && joinRequests.length > 0 ? (
+        {isCaptain && joinRequests.filter(req => req.teamId?._id === team._id || req.teamId === team._id).length > 0 ? (
           <View style={styles.badgeWrap}>
-            <Ionicons name="notifications" size={22} color="#ef4444" />
+            <Ionicons name="notifications" size={26} color="white" />
             <View style={styles.notifBadge}>
-              <Text style={styles.notifBadgeText}>{joinRequests.length}</Text>
+              <Text style={styles.notifBadgeText}>{joinRequests.filter(req => req.teamId?._id === team._id || req.teamId === team._id).length}</Text>
             </View>
           </View>
         ) : (
@@ -255,9 +382,118 @@ export default function MyTeamScreen({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {!team ? (
+        {!team && invitations.length > 0 && (
+          <View style={styles.invitationBox}>
+            <Text style={styles.invitationTitle}>
+              Lời mời tham gia đội ({invitations.length})
+            </Text>
+
+            {invitations.map((item) => (
+              <View key={item._id} style={styles.invitationCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.invitationTeam}>
+                    {item.teamId?.name}
+                  </Text>
+
+                  <Text style={styles.invitationSub}>
+                    📍 {item.teamId?.location}
+                  </Text>
+
+                  <Text style={styles.invitationSub}>
+                    Đội trưởng: {item.captainId?.username}
+                  </Text>
+                </View>
+
+                {processingId === item._id && processingAction === 'approve' && (
+                  <ActivityIndicator color="#22c55e" />
+                )}
+                {processingId === item._id && processingAction === 'reject' && (
+                  <ActivityIndicator color="#ef4444" />
+                )}
+                {processingId !== item._id && (
+                  <View style={{ flexDirection: "row" }}>
+                    <TouchableOpacity
+                      style={styles.invitationRejectBtn}
+                      onPress={() => handleRejectInvitation(item._id)}
+                    >
+                      <Ionicons
+                        name="close"
+                        size={18}
+                        color="#ef4444"
+                      />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.invitationAcceptBtn}
+                      onPress={() => handleAccept(item._id)}
+                    >
+                      <Ionicons
+                        name="checkmark"
+                        size={18}
+                        color="white"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+        {!team && sentRequests.length > 0 && (
+          <View style={styles.invitationBox}>
+            <Text style={styles.invitationTitle}>
+              Yêu cầu đã gửi ({sentRequests.length})
+            </Text>
+            {sentRequests.map((item) => (
+              <View key={item._id} style={styles.invitationCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.invitationTeam}>{item.teamId?.name}</Text>
+                  <Text style={styles.invitationSub}>📍 {item.teamId?.location}</Text>
+                  <Text style={styles.invitationSub}>Đội trưởng: {item.teamId?.captainId?.username || 'Ẩn danh'}</Text>
+                </View>
+                <View style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#f1f5f9', borderRadius: 8 }}>
+                  <Text style={{ color: '#64748b', fontSize: 13, fontWeight: 'bold' }}>Đang chờ duyệt</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+        {!team && teams.length > 0 ? (
+          <View style={{ gap: 12 }}>
+            <Text style={styles.sectionTitle}>Các đội bạn đã tham gia ({teams.length})</Text>
+            {teams.map(t => (
+              <TouchableOpacity
+                key={t._id}
+                style={styles.teamCardList}
+                onPress={() => setSelectedTeamId(t._id)}
+              >
+                <View style={styles.teamHeaderList}>
+                  <View style={styles.logoWrapList}>
+                    {t.logo && t.logo.startsWith('data:image') ? (
+                      <Image source={{ uri: t.logo }} style={styles.logo} resizeMode="cover" />
+                    ) : (
+                      <Ionicons name="shield" size={32} color="#22c55e" />
+                    )}
+                  </View>
+                  <View style={styles.teamTitleInfo}>
+                    <Text style={styles.teamName}>{t.name}</Text>
+                    <View style={styles.badgeRow}>
+                      <View style={styles.badge}>
+                        <Ionicons name="people" size={12} color="#f59e0b" />
+                        <Text style={styles.badgeText}>{t.players?.length}/14 thành viên</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={24} color="#94a3b8" />
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : !team ? (
           <View style={styles.emptyBox}>
-            <Ionicons name="shield-half-outline" size={80} color="#cbd5e1" />
+            <View style={styles.emptyIconWrap}>
+              <Ionicons name="shield-half-outline" size={54} color="#86efac" />
+            </View>
             <Text style={styles.emptyTitle}>Bạn chưa có đội bóng</Text>
             <Text style={styles.emptySub}>Hãy tạo một đội mới hoặc xin gia nhập vào một đội khác nhé!</Text>
             <TouchableOpacity
@@ -270,6 +506,12 @@ export default function MyTeamScreen({ navigation }) {
           </View>
         ) : (
           <View>
+            {/* Team Selector / Back Button */}
+            <TouchableOpacity style={styles.backToListBtn} onPress={() => setSelectedTeamId(null)}>
+              <Ionicons name="arrow-back" size={20} color="#475569" />
+              <Text style={styles.backToListText}>Danh sách đội</Text>
+            </TouchableOpacity>
+
             {/* Team Info */}
             <View style={styles.teamCard}>
               <View style={styles.teamHeader}>
@@ -317,20 +559,21 @@ export default function MyTeamScreen({ navigation }) {
                   <Ionicons name="notifications-outline" size={20} color="#ef4444" />
                   <Text style={styles.sectionTitle}>
                     Yêu cầu gia nhập
-                    {joinRequests.length > 0 && (
-                      <Text style={{ color: '#ef4444' }}> ({joinRequests.length})</Text>
+                    {joinRequests.filter(req => req.teamId?._id === team._id || req.teamId === team._id).length > 0 && (
+                      <Text style={{ color: '#ef4444' }}> ({joinRequests.filter(req => req.teamId?._id === team._id || req.teamId === team._id).length})</Text>
                     )}
                   </Text>
                 </View>
 
-                {joinRequests.length === 0 ? (
+                {joinRequests.filter(req => req.teamId?._id === team._id || req.teamId === team._id).length === 0 ? (
                   <View style={styles.emptyRequestsBox}>
                     <Text style={styles.emptyRequestsText}>Không có yêu cầu nào đang chờ.</Text>
                   </View>
                 ) : (
-                  joinRequests.map((req) => {
+                  joinRequests.filter(req => req.teamId?._id === team._id || req.teamId === team._id).map((req) => {
                     const p = req.requesterId;
-                    const isProcessing = processingId === req._id;
+                    const isProcessingApprove = processingId === req._id && processingAction === 'approve';
+                    const isProcessingReject = processingId === req._id && processingAction === 'reject';
                     return (
                       <View key={req._id} style={styles.requestCard}>
                         <View style={styles.reqPlayerInfo}>
@@ -346,11 +589,11 @@ export default function MyTeamScreen({ navigation }) {
                         </View>
                         <View style={styles.reqActions}>
                           <TouchableOpacity
-                            style={[styles.reqBtn, styles.approveBtn, isProcessing && { opacity: 0.6 }]}
+                            style={[styles.reqBtn, styles.approveBtn, isProcessingApprove && { opacity: 0.6 }]}
                             onPress={() => handleApprove(req._id)}
-                            disabled={isProcessing}
+                            disabled={processingId !== null}
                           >
-                            {isProcessing ? (
+                            {isProcessingApprove ? (
                               <ActivityIndicator size="small" color="white" />
                             ) : (
                               <>
@@ -360,11 +603,11 @@ export default function MyTeamScreen({ navigation }) {
                             )}
                           </TouchableOpacity>
                           <TouchableOpacity
-                            style={[styles.reqBtn, styles.rejectBtn, isProcessing && { opacity: 0.6 }]}
-                            onPress={() => handleReject(req._id)}
-                            disabled={isProcessing}
+                            style={[styles.reqBtn, styles.rejectBtn, isProcessingReject && { opacity: 0.6 }]}
+                            onPress={() => handleRejectRequest(req._id)}
+                            disabled={processingId !== null}
                           >
-                            {isProcessing ? (
+                            {isProcessingReject ? (
                               <ActivityIndicator size="small" color="white" />
                             ) : (
                               <>
@@ -491,121 +734,195 @@ export default function MyTeamScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
-  centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: '#f4fdf4' },
+  centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f4fdf4' },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    elevation: 2,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 24,
+    backgroundColor: '#16a34a',
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    elevation: 8,
+    shadowColor: '#14532d',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
   },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#dcfce7', justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#111' },
+  backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center', marginRight: 12, elevation: 2 },
+  headerTextWrap: { justifyContent: 'center' },
+  hello: { fontSize: 13, color: '#dcfce7', fontWeight: '600', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: 'white' },
 
   // Notification badge in header
-  badgeWrap: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  badgeWrap: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 22 },
   notifBadge: {
     position: 'absolute', top: 0, right: 0,
-    backgroundColor: '#ef4444', borderRadius: 8,
-    minWidth: 16, height: 16,
+    backgroundColor: '#ef4444', borderRadius: 10,
+    minWidth: 20, height: 20,
     justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: '#16a34a'
   },
   notifBadgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
 
-  scrollContent: { padding: 16, paddingBottom: 40 },
+  scrollContent: { padding: 16, paddingTop: 24, paddingBottom: 40 },
 
   // Empty State
   emptyBox: { alignItems: 'center', justifyContent: 'center', marginTop: 60, padding: 20 },
-  emptyTitle: { fontSize: 20, fontWeight: 'bold', color: '#334155', marginTop: 16, marginBottom: 8 },
-  emptySub: { fontSize: 14, color: '#64748b', textAlign: 'center', marginBottom: 24, paddingHorizontal: 20 },
-  createBtn: { flexDirection: 'row', backgroundColor: '#16a34a', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  createBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+  emptyIconWrap: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#dcfce7', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 2, borderColor: '#bbf7d0' },
+  emptyTitle: { fontSize: 20, fontWeight: '800', color: '#14532d', marginBottom: 10 },
+  emptySub: { fontSize: 14, color: '#166534', textAlign: 'center', marginBottom: 30, paddingHorizontal: 10, lineHeight: 22, fontWeight: '500' },
+  createBtn: { flexDirection: 'row', backgroundColor: '#16a34a', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 16, alignItems: 'center', elevation: 4, shadowColor: '#16a34a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6 },
+  createBtnText: { color: 'white', fontWeight: '800', fontSize: 15, letterSpacing: 0.5 },
+
+  // Team List View
+  teamCardList: { backgroundColor: 'white', borderRadius: 20, padding: 16, elevation: 3, shadowColor: '#16a34a', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 8, borderWidth: 1, borderColor: '#dcfce7' },
+  teamHeaderList: { flexDirection: 'row', alignItems: 'center' },
+  logoWrapList: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#f0fdf4', justifyContent: 'center', alignItems: 'center', marginRight: 16, overflow: 'hidden', borderWidth: 2, borderColor: '#4ade80' },
+  backToListBtn: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, padding: 10, backgroundColor: '#f1f5f9', alignSelf: 'flex-start', borderRadius: 12 },
+  backToListText: { color: '#475569', fontWeight: 'bold', fontSize: 14, marginLeft: 6 },
 
   // Team Card
-  teamCard: { backgroundColor: 'white', borderRadius: 20, padding: 16, marginBottom: 24, elevation: 3 },
-  teamHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  logoWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#dcfce7', justifyContent: 'center', alignItems: 'center', marginRight: 16, overflow: 'hidden' },
+  teamCard: { backgroundColor: 'white', borderRadius: 24, padding: 20, marginBottom: 24, elevation: 4, shadowColor: '#16a34a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, borderWidth: 1, borderColor: '#dcfce7' },
+  teamHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  logoWrap: { width: 70, height: 70, borderRadius: 35, backgroundColor: '#f0fdf4', justifyContent: 'center', alignItems: 'center', marginRight: 16, overflow: 'hidden', borderWidth: 3, borderColor: '#4ade80' },
   logo: { width: '100%', height: '100%' },
-  teamTitleInfo: { flex: 1 },
-  teamName: { fontSize: 20, fontWeight: 'bold', color: '#0f172a', marginBottom: 6 },
+  teamTitleInfo: { flex: 1, justifyContent: 'center' },
+  teamName: { fontSize: 20, fontWeight: '900', color: '#14532d', marginBottom: 8 },
   badgeRow: { flexDirection: 'row', gap: 8 },
-  badge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, gap: 4 },
-  badgeText: { fontSize: 12, fontWeight: '600', color: '#92400e' },
+  badge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef3c7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, gap: 4 },
+  badgeText: { fontSize: 11, fontWeight: '700', color: '#d97706' },
   badgeOpen: { backgroundColor: '#dcfce7' },
-  badgeTextOpen: { color: '#166534' },
+  badgeTextOpen: { color: '#16a34a' },
   badgeClosed: { backgroundColor: '#fee2e2' },
-  badgeTextClosed: { color: '#991b1b' },
-  teamDetails: { backgroundColor: '#f8fafc', padding: 12, borderRadius: 12, gap: 8 },
-  detailItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  detailText: { fontSize: 14, color: '#475569', flex: 1 },
+  badgeTextClosed: { color: '#dc2626' },
+  teamDetails: { backgroundColor: '#f0fdf4', padding: 16, borderRadius: 16, gap: 10 },
+  detailItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  detailText: { fontSize: 14, color: '#166534', flex: 1, fontWeight: '600' },
 
   // Join Requests Section
   requestsSection: {
-    backgroundColor: 'white', borderRadius: 20,
-    padding: 16, marginBottom: 24, elevation: 2,
-    borderWidth: 1, borderColor: '#fee2e2',
+    backgroundColor: 'white', borderRadius: 24,
+    padding: 20, marginBottom: 24, elevation: 4,
+    borderWidth: 1, borderColor: '#fecaca',
+    shadowColor: '#ef4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10
   },
-  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
   emptyRequestsBox: { padding: 16, alignItems: 'center' },
-  emptyRequestsText: { color: '#94a3b8', fontSize: 14, fontStyle: 'italic' },
+  emptyRequestsText: { color: '#ef4444', fontSize: 14, fontStyle: 'italic', fontWeight: '500' },
 
   requestCard: {
-    backgroundColor: '#f8fafc', borderRadius: 14,
-    padding: 12, marginBottom: 10,
+    backgroundColor: '#fef2f2', borderRadius: 16,
+    padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#fee2e2'
   },
-  reqPlayerInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  reqPlayerInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   reqAvatar: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#3b82f6', justifyContent: 'center',
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#ef4444', justifyContent: 'center',
     alignItems: 'center', marginRight: 12,
   },
-  reqName: { fontSize: 15, fontWeight: 'bold', color: '#1e293b', marginBottom: 2 },
-  reqSub: { fontSize: 13, color: '#64748b' },
+  reqName: { fontSize: 16, fontWeight: '800', color: '#7f1d1d', marginBottom: 2 },
+  reqSub: { fontSize: 13, color: '#b91c1c', fontWeight: '500' },
   reqActions: { flexDirection: 'row', gap: 10 },
   reqBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', paddingVertical: 10,
-    borderRadius: 10, gap: 6,
+    justifyContent: 'center', paddingVertical: 12,
+    borderRadius: 12, gap: 6, elevation: 2
   },
   approveBtn: { backgroundColor: '#22c55e' },
   rejectBtn: { backgroundColor: '#ef4444' },
-  reqBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
+  reqBtnText: { color: 'white', fontWeight: '800', fontSize: 14 },
 
   // Players
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1e293b', marginBottom: 16, marginLeft: 4 },
-  emptyPlayersBox: { backgroundColor: '#f1f5f9', padding: 16, borderRadius: 12, alignItems: 'center' },
-  emptyPlayersText: { color: '#64748b', fontSize: 14, fontStyle: 'italic' },
+  sectionTitle: { fontSize: 18, fontWeight: '900', color: '#14532d', marginBottom: 16, marginLeft: 4 },
+  emptyPlayersBox: { backgroundColor: 'white', padding: 20, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: '#dcfce7' },
+  emptyPlayersText: { color: '#16a34a', fontSize: 14, fontStyle: 'italic', fontWeight: '500' },
   playerCard: {
     flexDirection: 'row', backgroundColor: 'white',
-    padding: 12, borderRadius: 12, marginBottom: 12,
-    alignItems: 'center', elevation: 1,
+    padding: 14, borderRadius: 16, marginBottom: 12,
+    alignItems: 'center', elevation: 2, borderWidth: 1, borderColor: '#f0fdf4',
+    shadowColor: '#16a34a', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6
   },
-  playerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#3b82f6', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  playerAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: '#16a34a', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   playerInfo: { flex: 1 },
-  playerName: { fontSize: 15, fontWeight: 'bold', color: '#1e293b', marginBottom: 2 },
-  playerPos: { fontSize: 13, color: '#64748b' },
-  kickBtn: { padding: 8 },
+  playerName: { fontSize: 16, fontWeight: '800', color: '#14532d', marginBottom: 4 },
+  playerPos: { fontSize: 13, color: '#166534', fontWeight: '500' },
+  kickBtn: { padding: 10, backgroundColor: '#fee2e2', borderRadius: 12 },
 
   // Recruiting toggle section
   recruitingSection: {
-    backgroundColor: 'white', borderRadius: 16,
-    padding: 14, marginBottom: 20, elevation: 2,
-    borderWidth: 1, borderColor: '#e2e8f0',
+    backgroundColor: 'white', borderRadius: 20,
+    padding: 16, marginBottom: 24, elevation: 3,
+    borderWidth: 1, borderColor: '#dcfce7',
+    shadowColor: '#16a34a', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8
   },
-  recruitingInfo: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
-  recruitingTitle: { fontSize: 15, fontWeight: 'bold', color: '#1e293b', marginBottom: 2 },
-  recruitingSubText: { fontSize: 12, color: '#64748b', flexShrink: 1 },
+  recruitingInfo: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16 },
+  recruitingTitle: { fontSize: 16, fontWeight: '800', color: '#14532d', marginBottom: 4 },
+  recruitingSubText: { fontSize: 13, color: '#166534', flexShrink: 1, lineHeight: 20 },
   toggleRecruitBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 10, borderRadius: 10, gap: 6,
+    paddingVertical: 12, borderRadius: 12, gap: 8, elevation: 2
   },
   toggleRecruitBtnStop: { backgroundColor: '#ef4444' },
   toggleRecruitBtnOpen: { backgroundColor: '#22c55e' },
-  toggleRecruitBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
+  toggleRecruitBtnText: { color: 'white', fontWeight: '800', fontSize: 15 },
+
+  invitationBox: {
+    marginBottom: 24,
+  },
+  invitationTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    marginBottom: 12,
+    color: "#14532d",
+    marginLeft: 4,
+  },
+  invitationCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#dcfce7',
+    shadowColor: '#16a34a', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6
+  },
+  invitationTeam: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#14532d",
+    marginBottom: 4,
+  },
+  invitationSub: {
+    fontSize: 13,
+    color: "#166534",
+    marginTop: 2,
+    fontWeight: '500'
+  },
+  invitationAcceptBtn: {
+    backgroundColor: "#16a34a",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 10,
+    elevation: 2
+  },
+  invitationRejectBtn: {
+    backgroundColor: "#fef2f2",
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });

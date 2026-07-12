@@ -193,6 +193,12 @@ const matchTeam = async (req, res) => {
             });
         }
 
+        if (team.players.length <= 11) {
+            return res.status(400).json({
+                message: "Đội của bạn chưa có đủ 11 cầu thủ"
+            });
+        }
+
         // Kiểm tra khoảng cách 3 tiếng với các trận đã có của đội
         const threeHoursInMs = 3 * 60 * 60 * 1000;
         const newPlayTime = new Date(match.playTime);
@@ -229,10 +235,9 @@ const matchTeam = async (req, res) => {
 };
 
 const deleteMatch = async (req, res) => {
-
     try {
-
         const { id } = req.params;
+        const { userId } = req.body;
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({
@@ -240,11 +245,18 @@ const deleteMatch = async (req, res) => {
             });
         }
 
-        const match = await Match.findById(id);
+        const match = await Match.findById(id).populate("creatorTeamId");
 
         if (!match) {
             return res.status(404).json({
                 message: "Không tìm thấy trận đấu"
+            });
+        }
+
+        const captainId = match.creatorTeamId?.captainId?.toString();
+        if (!userId || captainId !== userId) {
+            return res.status(403).json({
+                message: "Chỉ đội trưởng mới có quyền xóa kèo đấu này"
             });
         }
 
@@ -270,13 +282,13 @@ const getMyMatches = async (req, res) => {
         if (!mongoose.Types.ObjectId.isValid(teamId)) {
             return res.status(400).json({ message: "Id không hợp lệ" });
         }
-        
+
         const matches = await Match.find({
             $or: [{ creatorTeamId: teamId }, { matchedWithTeamId: teamId }]
         })
-        .populate("creatorTeamId", "name logo")
-        .populate("matchedWithTeamId", "name logo")
-        .sort({ playTime: 1 });
+            .populate("creatorTeamId", "name logo")
+            .populate("matchedWithTeamId", "name logo")
+            .sort({ playTime: 1 });
 
         return res.status(200).json({ success: true, data: matches });
     } catch (err) {
