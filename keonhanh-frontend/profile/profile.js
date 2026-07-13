@@ -58,10 +58,10 @@ export default function ProfileSetupScreen() {
     const location = form.location.trim();
 
     // 2. Định nghĩa các Regex kiểm tra
-    // Hỗ trợ tiếng Việt, yêu cầu ít nhất 2 từ (họ và tên tách nhau bằng khoảng trắng)
-    const nameRegex =
-      /^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠưăâêôơ]+(\s+[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂÂÊÔƠưăâêôơ]+)+$/;
     const phoneRegex = /^(0|84|\+84)(3|5|7|8|9)([0-9]{8})$/;
+
+    // Kiểm tra tên không chứa số và ký tự đặc biệt
+    const invalidNameCharsRegex = /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/;
 
     // 3. Tiến hành validation
     if (!fullName) {
@@ -72,9 +72,11 @@ export default function ProfileSetupScreen() {
       setError("Họ tên phải từ 4 đến 50 ký tự.");
       return;
     }
-    if (!nameRegex.test(fullName)) {
+    
+    const words = fullName.split(/\s+/);
+    if (words.length < 2 || invalidNameCharsRegex.test(fullName)) {
       setError(
-        "Vui lòng nhập đầy đủ cả họ và tên (tối thiểu 2 từ, ví dụ: Nguyễn Văn A).",
+        "Vui lòng nhập đầy đủ cả họ và tên (tối thiểu 2 từ, không chứa số/ký tự đặc biệt).",
       );
       return;
     }

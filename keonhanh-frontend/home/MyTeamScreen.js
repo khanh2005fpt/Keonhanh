@@ -45,7 +45,14 @@ export default function MyTeamScreen({ navigation }) {
         setTeams([]);
         setLoading(false);
         setRefreshing(false);
-        Alert.alert('Lỗi Profile', profileData.message || 'Chưa thể lấy thông tin cá nhân.');
+        Alert.alert(
+          'Chưa có hồ sơ',
+          'Bạn cần tạo hồ sơ cá nhân trước khi quản lý đội bóng.',
+          [
+            { text: 'Tạo hồ sơ ngay', onPress: () => navigation.navigate('profile') },
+            { text: 'Để sau', style: 'cancel' }
+          ]
+        );
         return;
       }
 
@@ -60,7 +67,7 @@ export default function MyTeamScreen({ navigation }) {
 
       if (res.ok && data.success) {
         setTeams(data.data);
-        
+
         const currentTeam = selectedTeamId ? data.data.find(t => t._id === selectedTeamId) : null;
 
         // 3. Nếu user là đội trưởng của bất kỳ đội nào → lấy danh sách yêu cầu gia nhập
@@ -550,6 +557,14 @@ export default function MyTeamScreen({ navigation }) {
                   }</Text>
                 </View>
               </View>
+
+              <TouchableOpacity
+                style={styles.chatBtn}
+                onPress={() => navigation.navigate('teamChat', { teamId: team._id, teamName: team.name })}
+              >
+                <Ionicons name="chatbubbles" size={20} color="white" />
+                <Text style={styles.chatBtnText}>Vào Nhóm Chat</Text>
+              </TouchableOpacity>
             </View>
 
             {/* ========== SECTION: YÊU CẦU GIA NHẬP (chỉ đội trưởng) ========== */}
@@ -803,6 +818,22 @@ const styles = StyleSheet.create({
   teamDetails: { backgroundColor: '#f0fdf4', padding: 16, borderRadius: 16, gap: 10 },
   detailItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   detailText: { fontSize: 14, color: '#166534', flex: 1, fontWeight: '600' },
+
+  chatBtn: {
+    backgroundColor: '#16a34a',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 16,
+    gap: 8,
+  },
+  chatBtnText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
 
   // Join Requests Section
   requestsSection: {

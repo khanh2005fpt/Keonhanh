@@ -11,6 +11,9 @@ import matchRoutes from "./routes/matchRoutes.js"
 import teamRoutes from "./routes/teamRoutes.js"
 import joinRequestRoutes from "./routes/joinRequestRoutes.js"
 import invitationRoutes from "./routes/invitationRoutes.js";
+import messageRoutes from "./routes/messageRoutes.js";
+import http from "http";
+import { Server } from "socket.io";
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
@@ -24,6 +27,7 @@ app.use("/api/matches", matchRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/join-requests", joinRequestRoutes);
 app.use("/api/invitations", invitationRoutes);
+app.use("/api/messages", messageRoutes);
 
 const PORT = process.env.PORT || 9999;
 const MONGOURL = process.env.MONGO_URL;
@@ -42,7 +46,46 @@ mongoose
   .connect(MONGOURL, { dbName: DB_NAME, serverSelectionTimeoutMS: 10000 })
   .then(() => {
     console.log("DB connected successfully");
-    const server = app.listen(PORT, "0.0.0.0", () => {
+    
+    const httpServer = http.createServer(app);
+    const io = new Server(httpServer, {
+      cors: {
+        origin: "*",
+      },
+    });
+
+    io.on("connection", (socket) => {
+      console.log("A user connected:", socket.id);
+
+      socket.on("joinTeam", (teamId) => {
+        socket.join(teamId);
+        console.log(`Socket ${socket.id} joined team ${teamId}`);
+      });
+
+      socket.on("sendMessage", async (data) => {
+        try {
+          const Message = (await import("./models/Message.js")).default;
+          const newMessage = new Message({
+            team: data.teamId,
+            sender: data.senderId,
+            content: data.content,
+          });
+          await newMessage.save();
+
+          const populatedMessage = await Message.findById(newMessage._id).populate("sender", "username fullName avatar email");
+
+          io.to(data.teamId).emit("receiveMessage", populatedMessage);
+        } catch (err) {
+          console.error("Error saving message:", err);
+        }
+      });
+
+      socket.on("disconnect", () => {
+        console.log("User disconnected:", socket.id);
+      });
+    });
+
+    const server = httpServer.listen(PORT, "0.0.0.0", () => {
       console.log(`Server is running on port: ${PORT}`);
     });
 
